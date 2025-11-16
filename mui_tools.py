@@ -2,7 +2,7 @@
 from PySide6.QtWidgets import (QApplication, QWidget, QTreeWidget, QTreeWidgetItem,
                                QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
                                QLineEdit, QFileDialog, QGroupBox, QComboBox)
-from PySide6.QtGui import QPainter, QPixmap, QColor
+from PySide6.QtGui import QPainter, QPixmap, QColor, QFont
 from PySide6.QtCore import Qt
 
 # ---------------- Menu 数据结构 ----------------
@@ -213,9 +213,8 @@ class MenuPreview(QWidget):
         
         painter.drawPixmap(scaled_x, scaled_y, transformed)
         
-        # 绘制滚动指示器
-        if hasattr(self, 'show_scrollbar') and self.show_scrollbar:
-            self._draw_scrollbar(painter, inner_rect, int_scale)
+        # 移除滚动指示器显示
+        # 滚动功能仍然可用，但不再显示视觉指示器
 
     def _draw_scrollbar(self, painter, inner_rect, scale_factor):
         """绘制滚动指示器"""
@@ -247,6 +246,9 @@ class MenuPreview(QWidget):
         painter.fillRect(int(scrollbar_x), int(thumb_y), int(scrollbar_width), int(thumb_height), thumb_color)
 
     def render_menu(self):
+        # 导入QFont类，确保在方法中可用
+        from PySide6.QtGui import QFont
+        
         if not self.menu_root:
             return
             
@@ -385,14 +387,6 @@ class MenuPreview(QWidget):
                     # 其他屏幕使用居中对齐
                     rect = painter.boundingRect(2, y - line_h, self.fb_w - 4, line_h, Qt.AlignLeft | Qt.AlignVCenter, text)
                     painter.drawText(rect, Qt.AlignLeft | Qt.AlignVCenter, text)
-                
-                # 绘制位置指示器（显示当前项位置）
-                if max_lines < total:
-                    pos_text = f"{idx+1}/{total}"
-                    painter.setPen(self.selected_fg_color)
-                    # 使用更好的文本渲染方法
-                    rect = painter.boundingRect(self.fb_w - 30, y - line_h, 25, line_h, Qt.AlignRight | Qt.AlignVCenter, pos_text)
-                    painter.drawText(rect, Qt.AlignRight | Qt.AlignVCenter, pos_text)
             else:
                 # 绘制普通项
                 painter.setPen(self.fg_color)
@@ -411,54 +405,103 @@ class MenuPreview(QWidget):
                     painter.drawText(rect, Qt.AlignLeft | Qt.AlignVCenter, text)
         
         # 绘制底部固定导航组件，始终显示
-        # 底部导航背景
-        bottom_bg_color = QColor(30, 30, 40) if "OLED" in self.screen_type else QColor(50, 60, 80)
-        painter.fillRect(0, self.fb_h - bottom_nav_height, self.fb_w, bottom_nav_height, bottom_bg_color)
+        # 先导入QFont类，确保在整个方法中可用
+        from PySide6.QtGui import QFont
         
-        # 绘制分隔线
-        separator_color = QColor(80, 80, 90) if "OLED" in self.screen_type else QColor(120, 130, 150)
-        painter.setPen(separator_color)
-        painter.drawLine(0, self.fb_h - bottom_nav_height, self.fb_w, self.fb_h - bottom_nav_height)
-        
-        # 设置导航文本颜色
-        nav_text_color = QColor(200, 200, 220) if "OLED" in self.screen_type else QColor(240, 240, 250)
-        painter.setPen(nav_text_color)
-        
-        # 绘制页面数量指示器
-        if max_lines < total:
-            # 有多页时显示页码信息
-            page_text = f"第 {self.current_page + 1}/{(total - 1) // max_lines + 1} 页"
+        # 动态调整底部导航高度以适应内容
+        if "OLED" in self.screen_type:
+            # OLED底部导航：使用浅色背景区分区域
+            bottom_bg_color = QColor(20, 20, 20)  # 比主背景稍亮的深灰色
+            painter.fillRect(0, self.fb_h - bottom_nav_height, self.fb_w, bottom_nav_height, bottom_bg_color)
             
-            # 居中显示页码信息
-            if "OLED" in self.screen_type:
-                # OLED使用精确的像素位置
-                painter.drawText(self.fb_w // 2 - 30, self.fb_h - 4, page_text)
-            else:
-                # 其他屏幕使用更好的渲染方法
-                rect = painter.boundingRect(0, self.fb_h - bottom_nav_height, self.fb_w, bottom_nav_height, Qt.AlignCenter, page_text)
-                painter.drawText(rect, Qt.AlignCenter, page_text)
+            # OLED分隔线：使用前景色绘制细线
+            painter.setPen(self.fg_color)
+            # 绘制像素级细线，使用点阵样式模拟OLED显示
+            for x in range(0, self.fb_w, 2):
+                painter.drawPoint(x, self.fb_h - bottom_nav_height)
             
-            # 绘制左箭头导航
-            if self.current_page > 0:
-                arrow_left = "◀"
-                painter.drawText(10, self.fb_h - 4, arrow_left)
-            
-            # 绘制右箭头导航
-            if self.current_page < (total - 1) // max_lines:
-                arrow_right = "▶"
-                painter.drawText(self.fb_w - 20, self.fb_h - 4, arrow_right)
+            # OLED导航文本：使用前景色，像素级精确渲染
+            painter.setPen(self.fg_color)
+            # 使用与主菜单相同的字体，但不调整大小
+            nav_font = self._get_font()
+            # 保持原始字体大小，不调整底部字体
+            nav_font.setStyleStrategy(QFont.NoAntialias)  # 禁用抗锯齿
+            painter.setFont(nav_font)
         else:
-            # 只有一页时只显示项数
-            item_text = f"共 {total} 项"
+            # TFT屏幕保持原有设置
+            bottom_bg_color = QColor(50, 60, 80)
+            painter.fillRect(0, self.fb_h - bottom_nav_height, self.fb_w, bottom_nav_height, bottom_bg_color)
             
-            # 居中显示项数信息
-            if "OLED" in self.screen_type:
-                # OLED使用精确的像素位置
-                painter.drawText(self.fb_w // 2 - 20, self.fb_h - 4, item_text)
+            separator_color = QColor(120, 130, 150)
+            painter.setPen(separator_color)
+            painter.drawLine(0, self.fb_h - bottom_nav_height, self.fb_w, self.fb_h - bottom_nav_height)
+            
+            nav_text_color = QColor(240, 240, 250)
+            painter.setPen(nav_text_color)
+            nav_font = self._get_font()
+            # 保持原始字体大小，不调整底部字体
+            painter.setFont(nav_font)
+        
+        # 获取当前选中项的信息，整合到底部栏显示
+        if self.cursor_index < len(visible):
+            current_item = visible[self.cursor_index]
+            if current_item.is_exec:
+                # 执行项显示执行图标
+                type_text = "● 执行"
             else:
-                # 其他屏幕使用更好的渲染方法
-                rect = painter.boundingRect(0, self.fb_h - bottom_nav_height, self.fb_w, bottom_nav_height, Qt.AlignCenter, item_text)
-                painter.drawText(rect, Qt.AlignCenter, item_text)
+                # 子菜单项显示子菜单图标
+                type_text = "▶ 子菜单"
+            
+            # 添加位置信息到导航文本
+            position_text = f"{self.cursor_index + 1}/{total}"
+            nav_text = f"{position_text} {type_text}"
+        else:
+            nav_text = ""
+        
+        # 统一显示菜单指向信息，包含位置和类型
+        if nav_text:
+            # 设置底部导航专用字体，不受主字体设置影响
+            from PySide6.QtGui import QFont
+            if "OLED" in self.screen_type:
+                # OLED使用更大的字体设置
+                nav_font = QFont("Consolas", 11)  # 使用Consolas字体，更清晰的等宽字体
+                nav_font.setPixelSize(11)  # 使用像素大小而不是点大小，更精确
+                nav_font.setStyleStrategy(QFont.NoAntialias)  # 禁用抗锯齿
+                nav_font.setHintingPreference(QFont.PreferNoHinting)  # 禁用字体提示，避免模糊
+                nav_font.setBold(False)  # 取消粗体，提高清晰度
+                nav_font.setKerning(False)  # 禁用字距调整
+                painter.setFont(nav_font)
+                
+                # 设置渲染提示，确保像素级清晰
+                painter.setRenderHint(QPainter.Antialiasing, False)
+                painter.setRenderHint(QPainter.TextAntialiasing, False)
+                painter.setRenderHint(QPainter.SmoothPixmapTransform, False)
+                
+                # OLED使用精确的像素位置
+                text_width = len(nav_text) * 6  # 11px字体的字符宽度约6px
+                text_x = max(2, (self.fb_w - text_width) // 2)
+                # 使用整数坐标，避免亚像素模糊
+                painter.drawText(int(text_x), self.fb_h - 2, nav_text)
+            else:
+                # TFT使用更大的字体设置
+                nav_font = QFont("Segoe UI", 13)  # 使用Segoe UI字体，更清晰
+                nav_font.setPixelSize(13)  # 使用像素大小
+                nav_font.setStyleStrategy(QFont.PreferAntialias)
+                nav_font.setHintingPreference(QFont.PreferFullHinting)
+                nav_font.setBold(False)
+                painter.setFont(nav_font)
+                
+                # 设置渲染提示
+                painter.setRenderHint(QPainter.Antialiasing, True)
+                painter.setRenderHint(QPainter.TextAntialiasing, True)
+                painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+                
+                # 使用精确的文本渲染
+                rect = painter.boundingRect(0, self.fb_h - bottom_nav_height, self.fb_w, bottom_nav_height, Qt.AlignCenter, nav_text)
+                painter.drawText(rect, Qt.AlignCenter, nav_text)
+            
+            # 移除分页导航指示器中的三角形箭头
+            # 保留分页功能但不显示箭头图标
         
         painter.end()
         self.update()
@@ -564,6 +607,13 @@ class MenuDesigner(QWidget):
         super().__init__()
         self.setWindowTitle("MCU 菜单设计器 - U8G2 完整版")
         self.resize(1200,700)
+        
+        # 保存当前设置状态，避免切换时丢失
+        self.current_settings = {
+            'font_size': '中(12px)',
+            'color_mode': '单色',
+            'preview_size': '放大2倍'
+        }
 
         # 根菜单
         self.menu_root = MenuItem("根菜单", is_exec=False)
@@ -677,6 +727,7 @@ class MenuDesigner(QWidget):
         font_size_layout.addWidget(QLabel("字体大小:"))
         self.font_size_combo = QComboBox()
         self.font_size_combo.addItems(["小(8px)", "中(12px)", "大(16px)"])
+        self.font_size_combo.setCurrentText("中(12px)")  # 设置默认为12px
         self.font_size_combo.currentTextChanged.connect(self.on_screen_config_changed)
         font_size_layout.addWidget(self.font_size_combo)
         font_size_layout.addStretch()
@@ -746,16 +797,40 @@ class MenuDesigner(QWidget):
 
     # ---------------- 配置处理方法 ----------------
     def on_screen_type_changed(self):
-        """屏幕类型改变时更新配置"""
+        """屏幕类型改变时更新配置，保存当前设置"""
         screen_type = self.screen_type_combo.currentText()
         
-        # 根据屏幕类型设置默认参数
+        # 保存当前设置
+        self.current_settings = {
+            'font_size': self.font_size_combo.currentText(),
+            'color_mode': self.color_mode_combo.currentText(),
+            'preview_size': self.preview_size_combo.currentText()
+        }
+        
+        # 根据屏幕类型设置默认参数，但保留用户的自定义设置
         if "OLED" in screen_type:
-            self.color_mode_combo.setCurrentText("单色")
-            self.font_size_combo.setCurrentText("小(8px)")
+            # OLED模式：使用保存的设置或默认值
+            if self.color_mode_combo.currentText() in ["16色", "256色", "真彩色"]:
+                # 如果当前是TFT专用的颜色模式，则切换为OLED兼容的模式
+                self.color_mode_combo.setCurrentText("单色")
+            else:
+                # 保留用户的颜色设置（如果兼容OLED）
+                pass
+            
+            # 保留用户的字体大小设置，不强制切换
+            # self.font_size_combo.setCurrentText("小(8px)")  # 注释掉强制设置
+            
         elif "TFT" in screen_type:
-            self.color_mode_combo.setCurrentText("16色")
-            self.font_size_combo.setCurrentText("中(12px)")
+            # TFT模式：使用保存的设置或默认值
+            if self.color_mode_combo.currentText() == "单色":
+                # 如果当前是单色模式，则切换为TFT推荐的颜色模式
+                self.color_mode_combo.setCurrentText("16色")
+            else:
+                # 保留用户的颜色设置
+                pass
+            
+            # 保留用户的字体大小设置，不强制切换
+            # self.font_size_combo.setCurrentText("中(12px)")  # 注释掉强制设置
         
         # 更新预览
         self.on_screen_config_changed()
