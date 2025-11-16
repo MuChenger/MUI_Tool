@@ -3,8 +3,8 @@
   "color_mode": "16色",
   "font_size": "中(12px)",
   "preview_size": "实际大小",
-  "bg_color": "#FFFF00",
-  "font_color": "#0000FF",
+  "bg_color": "#004080",
+  "font_color": "#FFFFFF",
   "selected_bg": "#FFFFFF",
   "selected_font": "#000000",
   "screen_width": "128",
@@ -29,13 +29,22 @@
             "visible": true,
             "callback_name": "",
             "cursor_pos": 0,
-            "children": []
+            "children": [
+              {
+                "name": "新菜单",
+                "is_exec": true,
+                "visible": true,
+                "callback_name": "",
+                "cursor_pos": 0,
+                "children": []
+              }
+            ]
           }
         ]
       },
       {
         "name": "数据显示",
-        "is_exec": false,
+        "is_exec": true,
         "visible": true,
         "callback_name": "",
         "cursor_pos": 0,
@@ -43,7 +52,7 @@
       },
       {
         "name": "设备控制",
-        "is_exec": false,
+        "is_exec": true,
         "visible": true,
         "callback_name": "",
         "cursor_pos": 0,
@@ -51,7 +60,7 @@
       },
       {
         "name": "通信设置",
-        "is_exec": false,
+        "is_exec": true,
         "visible": true,
         "callback_name": "",
         "cursor_pos": 0,
@@ -59,7 +68,7 @@
       },
       {
         "name": "时间日期",
-        "is_exec": false,
+        "is_exec": true,
         "visible": true,
         "callback_name": "",
         "cursor_pos": 0,
@@ -67,7 +76,7 @@
       },
       {
         "name": "网络配置",
-        "is_exec": false,
+        "is_exec": true,
         "visible": true,
         "callback_name": "",
         "cursor_pos": 0,
@@ -75,7 +84,7 @@
       },
       {
         "name": "安全设置",
-        "is_exec": false,
+        "is_exec": true,
         "visible": true,
         "callback_name": "",
         "cursor_pos": 0,
@@ -83,7 +92,7 @@
       },
       {
         "name": "用户管理",
-        "is_exec": false,
+        "is_exec": true,
         "visible": true,
         "callback_name": "",
         "cursor_pos": 0,
@@ -91,7 +100,7 @@
       },
       {
         "name": "日志记录",
-        "is_exec": false,
+        "is_exec": true,
         "visible": true,
         "callback_name": "",
         "cursor_pos": 0,
@@ -99,7 +108,7 @@
       },
       {
         "name": "系统信息",
-        "is_exec": false,
+        "is_exec": true,
         "visible": true,
         "callback_name": "",
         "cursor_pos": 0,
@@ -107,7 +116,7 @@
       },
       {
         "name": "诊断工具",
-        "is_exec": false,
+        "is_exec": true,
         "visible": true,
         "callback_name": "",
         "cursor_pos": 0,
@@ -115,7 +124,7 @@
       },
       {
         "name": "固件更新",
-        "is_exec": false,
+        "is_exec": true,
         "visible": true,
         "callback_name": "",
         "cursor_pos": 0,
@@ -123,7 +132,7 @@
       },
       {
         "name": "备份恢复",
-        "is_exec": false,
+        "is_exec": true,
         "visible": true,
         "callback_name": "",
         "cursor_pos": 0,
@@ -131,7 +140,7 @@
       },
       {
         "name": "工厂重置",
-        "is_exec": false,
+        "is_exec": true,
         "visible": true,
         "callback_name": "",
         "cursor_pos": 0,

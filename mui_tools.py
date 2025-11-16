@@ -22,6 +22,21 @@ class MenuItem:
     def add_child(self, child):
         child.parent = self
         self.children.append(child)
+        
+        # 检查是否为最后一级菜单（叶子节点）
+        self.check_and_set_leaf_nodes_exec()
+    
+    def check_and_set_leaf_nodes_exec(self):
+        """自动检测并设置最后一级菜单为执行项"""
+        def set_leaf_nodes_exec_recursive(node):
+            if not node.children:  # 叶子节点
+                node.is_exec = True
+            else:
+                node.is_exec = False  # 非叶子节点为子菜单
+                for child in node.children:
+                    set_leaf_nodes_exec_recursive(child)
+        
+        set_leaf_nodes_exec_recursive(self)
 
 # ---------------- 菜单预览控件 ----------------
 class MenuPreview(QWidget):
@@ -1443,6 +1458,8 @@ class MenuDesigner(QWidget):
     def toggle_exec(self):
         if self.current_node:
             self.current_node.is_exec = not self.current_node.is_exec
+            # 检查并设置叶子节点为执行项
+            self.current_node.check_and_set_leaf_nodes_exec()
             self.refresh_tree()
             self.preview.render_menu()
 
