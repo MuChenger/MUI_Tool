@@ -1215,7 +1215,8 @@ class MenuDesigner(QWidget):
             'selected_bg': self.selected_bg_hex.text().strip() if hasattr(self, 'selected_bg_hex') else "#FFFFFF",
             'selected_font': self.selected_font_hex.text().strip() if hasattr(self, 'selected_font_hex') else "#000000",
             'screen_width': self.screen_width_edit.text(),
-            'screen_height': self.screen_height_edit.text()
+            'screen_height': self.screen_height_edit.text(),
+            'menu_data': self.serialize_menu()  # 保存菜单数据
         }
         
         try:
@@ -1250,6 +1251,15 @@ class MenuDesigner(QWidget):
                     def final_apply():
                         try:
                             print(f"应用设置: {self.current_settings}")
+                            
+                            # 检查是否有菜单数据需要恢复
+                            if 'menu_data' in self.current_settings and self.current_settings['menu_data']:
+                                # 恢复菜单数据
+                                restored_root = self.deserialize_menu(self.current_settings['menu_data'])
+                                if restored_root:
+                                    self.menu_root = restored_root
+                                    self.refresh_tree()
+                                    print("菜单数据已恢复")
                             
                             # 应用屏幕类型
                             if hasattr(self, 'screen_type_combo') and 'screen_type' in self.current_settings:
@@ -1325,6 +1335,7 @@ class MenuDesigner(QWidget):
                             
                             # 更新预览
                             if hasattr(self, 'preview'):
+                                self.preview.menu_root = self.menu_root
                                 self.on_screen_config_changed()
                                 print("预览已更新")
                             
@@ -1356,6 +1367,47 @@ class MenuDesigner(QWidget):
         """窗口关闭时保存设置"""
         self.save_settings()
         super().closeEvent(event)
+    
+    def serialize_menu(self):
+        """序列化菜单数据为字典格式"""
+        def serialize_node(node):
+            return {
+                'name': node.name,
+                'is_exec': node.is_exec,
+                'visible': node.visible,
+                'callback_name': node.callback_name,
+                'cursor_pos': node.cursor_pos,
+                'children': [serialize_node(child) for child in node.children]
+            }
+        
+        if self.menu_root:
+            return serialize_node(self.menu_root)
+        else:
+            return None
+    
+    def deserialize_menu(self, menu_data):
+        """从字典数据反序列化菜单数据"""
+        def deserialize_node(data, parent=None):
+            node = MenuItem(
+                name=data.get('name', '菜单项'),
+                is_exec=data.get('is_exec', False),
+                visible=data.get('visible', True),
+                parent=parent
+            )
+            node.callback_name = data.get('callback_name', '')
+            node.cursor_pos = data.get('cursor_pos', 0)
+            
+            for child_data in data.get('children', []):
+                child_node = deserialize_node(child_data, node)
+                node.children.append(child_node)
+            
+            return node
+        
+        if menu_data:
+            self.menu_root = deserialize_node(menu_data)
+            return self.menu_root
+        else:
+            return None
         
     # ---------------- Tree操作 ----------------
     def refresh_tree(self):

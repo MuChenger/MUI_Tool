@@ -8,5 +8,135 @@
   "selected_bg": "#FFFFFF",
   "selected_font": "#000000",
   "screen_width": "128",
-  "screen_height": "128"
+  "screen_height": "128",
+  "menu_data": {
+    "name": "根菜单",
+    "is_exec": false,
+    "visible": true,
+    "callback_name": "",
+    "cursor_pos": 0,
+    "children": [
+      {
+        "name": "系统设置",
+        "is_exec": false,
+        "visible": true,
+        "callback_name": "",
+        "cursor_pos": 0,
+        "children": [
+          {
+            "name": "新菜单",
+            "is_exec": false,
+            "visible": true,
+            "callback_name": "",
+            "cursor_pos": 0,
+            "children": []
+          }
+        ]
+      },
+      {
+        "name": "数据显示",
+        "is_exec": false,
+        "visible": true,
+        "callback_name": "",
+        "cursor_pos": 0,
+        "children": []
+      },
+      {
+        "name": "设备控制",
+        "is_exec": false,
+        "visible": true,
+        "callback_name": "",
+        "cursor_pos": 0,
+        "children": []
+      },
+      {
+        "name": "通信设置",
+        "is_exec": false,
+        "visible": true,
+        "callback_name": "",
+        "cursor_pos": 0,
+        "children": []
+      },
+      {
+        "name": "时间日期",
+        "is_exec": false,
+        "visible": true,
+        "callback_name": "",
+        "cursor_pos": 0,
+        "children": []
+      },
+      {
+        "name": "网络配置",
+        "is_exec": false,
+        "visible": true,
+        "callback_name": "",
+        "cursor_pos": 0,
+        "children": []
+      },
+      {
+        "name": "安全设置",
+        "is_exec": false,
+        "visible": true,
+        "callback_name": "",
+        "cursor_pos": 0,
+        "children": []
+      },
+      {
+        "name": "用户管理",
+        "is_exec": false,
+        "visible": true,
+        "callback_name": "",
+        "cursor_pos": 0,
+        "children": []
+      },
+      {
+        "name": "日志记录",
+        "is_exec": false,
+        "visible": true,
+        "callback_name": "",
+        "cursor_pos": 0,
+        "children": []
+      },
+      {
+        "name": "系统信息",
+        "is_exec": false,
+        "visible": true,
+        "callback_name": "",
+        "cursor_pos": 0,
+        "children": []
+      },
+      {
+        "name": "诊断工具",
+        "is_exec": false,
+        "visible": true,
+        "callback_name": "",
+        "cursor_pos": 0,
+        "children": []
+      },
+      {
+        "name": "固件更新",
+        "is_exec": false,
+        "visible": true,
+        "callback_name": "",
+        "cursor_pos": 0,
+        "children": []
+      },
+      {
+        "name": "备份恢复",
+        "is_exec": false,
+        "visible": true,
+        "callback_name": "",
+        "cursor_pos": 0,
+        "children": []
+      },
+      {
+        "name": "工厂重置",
+        "is_exec": false,
+        "visible": true,
+        "callback_name": "",
+        "cursor_pos": 0,
+        "children": []
+      }
+    ]
+  }
 }
