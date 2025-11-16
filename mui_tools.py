@@ -1507,12 +1507,14 @@ class MenuDesigner(QWidget):
         elif key=="Back":
             if self.preview.menu_root.parent:
                 # 返回上级菜单：保存当前位置并切换到父菜单
+                current_root = self.preview.menu_root  # 保存当前根节点引用
                 self.preview.menu_root.cursor_pos = self.preview.cursor_index
                 self.preview.menu_root = self.preview.menu_root.parent
-                # 找到当前节点在父菜单中的位置
+                
+                # 在父菜单中找到当前根节点的位置
                 parent_visible = [c for c in self.preview.menu_root.children if c.visible]
                 for i, child in enumerate(parent_visible):
-                    if child == self.preview.menu_root.children[0].parent:
+                    if child == current_root:  # 使用保存的当前根节点引用
                         self.preview.cursor_index = i
                         break
                 else:

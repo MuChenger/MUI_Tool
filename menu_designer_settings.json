@@ -14,7 +14,7 @@
     "is_exec": false,
     "visible": true,
     "callback_name": "",
-    "cursor_pos": 0,
+    "cursor_pos": 13,
     "children": [
       {
         "name": "系统设置",
@@ -44,11 +44,20 @@
       },
       {
         "name": "数据显示",
-        "is_exec": true,
+        "is_exec": false,
         "visible": true,
         "callback_name": "",
         "cursor_pos": 0,
-        "children": []
+        "children": [
+          {
+            "name": "新菜单",
+            "is_exec": true,
+            "visible": true,
+            "callback_name": "",
+            "cursor_pos": 0,
+            "children": []
+          }
+        ]
       },
       {
         "name": "设备控制",
