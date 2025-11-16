@@ -774,13 +774,14 @@ class MenuDesigner(QWidget):
         self.menu_root.add_child(MenuItem("工厂重置", is_exec=False))
         self.current_node = self.menu_root
 
-        # 主布局 - 增加间距和边距
+        # 主布局 - 三列布局
         main_layout = QHBoxLayout(self)
         main_layout.setSpacing(15)  # 增加控件间距
         main_layout.setContentsMargins(15, 15, 15, 15)  # 增加边距
 
-        # 左侧树控件
+        # === 左侧：菜单树 ===
         left_widget = QWidget()
+        left_widget.setMaximumWidth(250)  # 限制左侧宽度
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(10)  # 增加内部间距
         left_layout.setContentsMargins(0, 0, 0, 0)
@@ -788,78 +789,19 @@ class MenuDesigner(QWidget):
         self.tree = QTreeWidget()
         self.tree.setHeaderLabel("菜单结构")
         self.tree.itemClicked.connect(self.on_tree_select)
-        self.tree.setMinimumHeight(300)  # 设置最小高度
+        self.tree.setMinimumHeight(400)  # 设置最小高度
         self.refresh_tree()
         left_layout.addWidget(self.tree)
-
-        # 中间属性编辑
-        prop_group = QGroupBox("菜单项属性")
-        prop_layout = QVBoxLayout(prop_group)
-        prop_layout.setSpacing(8)  # 增加属性面板内部间距
-        prop_layout.setContentsMargins(12, 15, 12, 12)  # 增加边距
-
-        self.name_edit = QLineEdit()
-        self.name_edit.editingFinished.connect(self.update_name)
-        self.name_edit.setMinimumHeight(30)  # 增加输入框高度
-        prop_layout.addWidget(QLabel("菜单名称"))
-        prop_layout.addWidget(self.name_edit)
-
-        # 移除切换执行/子菜单按钮，改为自动检测
-        # self.is_exec_btn = QPushButton("切换执行/子菜单")
-        # self.is_exec_btn.clicked.connect(self.toggle_exec)
-        # prop_layout.addWidget(self.is_exec_btn)
-
-        self.callback_edit = QLineEdit()
-        self.callback_edit.setMinimumHeight(30)  # 增加输入框高度
-        prop_layout.addWidget(QLabel("回调函数名 (执行菜单有效)"))
-        prop_layout.addWidget(self.callback_edit)
-        self.callback_edit.editingFinished.connect(self.update_callback)
-
-        # 按钮布局 - 使用水平布局使按钮更紧凑
-        button_layout = QHBoxLayout()
-        button_layout.setSpacing(8)
+        left_layout.addStretch()
         
-        self.add_btn = QPushButton("添加子菜单")
-        self.add_btn.clicked.connect(self.add_menu)
-        self.add_btn.setMinimumHeight(35)  # 增加按钮高度
-        button_layout.addWidget(self.add_btn)
+        main_layout.addWidget(left_widget, 0)  # 左侧固定宽度
 
-        self.del_btn = QPushButton("删除菜单")
-        self.del_btn.clicked.connect(self.del_menu)
-        self.del_btn.setMinimumHeight(35)  # 增加按钮高度
-        button_layout.addWidget(self.del_btn)
-        
-        prop_layout.addLayout(button_layout)
-
-        prop_layout.addWidget(QLabel(" "))
-        self.export_btn = QPushButton("导出完整U8G2 C代码")
-        self.export_btn.setProperty("class", "primary")  # 设置为主要按钮样式
-        self.export_btn.clicked.connect(self.export_code)
-        self.export_btn.setMinimumHeight(40)  # 增加导出按钮高度
-        prop_layout.addWidget(self.export_btn)
-        prop_layout.addStretch()
-        
-        left_layout.addWidget(prop_group)
-        main_layout.addWidget(left_widget, 1)
-
-        # 导入选项卡控件
-        from PySide6.QtWidgets import QTabWidget
-        
-        # 右侧区域 - 使用选项卡组织
-        right_widget = QWidget()
-        right_layout = QVBoxLayout(right_widget)
-        right_layout.setSpacing(10)  # 减少间距
-        right_layout.setContentsMargins(0, 0, 0, 0)
-        
-        # 创建选项卡控件
-        self.tab_widget = QTabWidget()
-        self.tab_widget.setTabPosition(QTabWidget.North)  # 选项卡在上方
-        
-        # === 选项卡1: 菜单预览 ===
-        preview_tab = QWidget()
-        preview_tab_layout = QVBoxLayout(preview_tab)
-        preview_tab_layout.setSpacing(10)
-        preview_tab_layout.setContentsMargins(12, 12, 12, 12)
+        # === 中间：菜单预览 ===
+        middle_widget = QWidget()
+        middle_widget.setMinimumWidth(400)  # 设置最小宽度
+        middle_layout = QVBoxLayout(middle_widget)
+        middle_layout.setSpacing(10)
+        middle_layout.setContentsMargins(0, 0, 0, 0)
         
         # 菜单预览组
         preview_group = QGroupBox("菜单预览")
@@ -869,9 +811,10 @@ class MenuDesigner(QWidget):
         
         # 创建预览控件
         self.preview = MenuPreview()
-        # 稍后设置预览控件，因为combo框还没创建
-        self.preview.setMinimumHeight(350)  # 增加预览最小高度
+        self.preview.setMinimumHeight(300)  # 增加预览最小高度
         preview_layout.addWidget(self.preview, 1)
+        
+        middle_layout.addWidget(preview_group)
         
         # 按键模拟
         keys_group = QGroupBox("按键模拟")
@@ -906,23 +849,106 @@ class MenuDesigner(QWidget):
         main_key_layout.addWidget(self.key_back_btn)
         
         keys_layout.addLayout(main_key_layout)
-        preview_tab_layout.addWidget(preview_group)
-        preview_tab_layout.addWidget(keys_group)
+        middle_layout.addWidget(keys_group)
         
-        # 添加预览选项卡
-        self.tab_widget.addTab(preview_tab, "🖼️ 预览")
+        main_layout.addWidget(middle_widget, 1)  # 中间自适应宽度
+
+        # === 右侧：配置与操作 ===
+        right_widget = QWidget()
+        right_widget.setMaximumWidth(320)  # 限制右侧宽度
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setSpacing(10)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # 导入选项卡控件
+        from PySide6.QtWidgets import QTabWidget
+        
+        # 创建选项卡控件
+        self.tab_widget = QTabWidget()
+        self.tab_widget.setTabPosition(QTabWidget.North)  # 选项卡在上方
+        
+        # === 选项卡1: 菜单操作 ===
+        menu_tab = QWidget()
+        menu_tab_layout = QVBoxLayout(menu_tab)
+        menu_tab_layout.setSpacing(10)
+        menu_tab_layout.setContentsMargins(12, 12, 12, 12)
+        
+        # 菜单选择提示
+        self.selection_label = QLabel("请选择一个菜单项进行编辑")
+        self.selection_label.setWordWrap(True)
+        self.selection_label.setStyleSheet("color: #a0a0a0; font-style: italic; padding: 10px;")
+        self.selection_label.setAlignment(Qt.AlignCenter)
+        menu_tab_layout.addWidget(self.selection_label)
+
+        # 属性编辑区域（初始隐藏）
+        self.properties_widget = QWidget()
+        self.properties_widget.setVisible(False)
+        properties_layout = QVBoxLayout(self.properties_widget)
+        properties_layout.setSpacing(8)
+        properties_layout.setContentsMargins(0, 0, 0, 0)
+
+        # 当前选中项信息
+        self.current_item_label = QLabel()
+        self.current_item_label.setStyleSheet("font-weight: 600; color: #0078d4; padding: 5px; background-color: #f0f8ff; border-radius: 4px; margin-bottom: 10px;")
+        properties_layout.addWidget(self.current_item_label)
+
+        self.name_edit = QLineEdit()
+        self.name_edit.editingFinished.connect(self.update_name)
+        self.name_edit.setMinimumHeight(30)  # 增加输入框高度
+        properties_layout.addWidget(QLabel("菜单名称:"))
+        properties_layout.addWidget(self.name_edit)
+
+        self.callback_edit = QLineEdit()
+        self.callback_edit.setMinimumHeight(30)  # 增加输入框高度
+        properties_layout.addWidget(QLabel("回调函数名:"))
+        properties_layout.addWidget(self.callback_edit)
+        self.callback_edit.editingFinished.connect(self.update_callback)
+
+        menu_tab_layout.addWidget(self.properties_widget)
+
+        # 分隔线
+        line = QLabel()
+        line.setStyleSheet("border: none; border-top: 1px solid #e1e8ed; margin: 10px 0;")
+        menu_tab_layout.addWidget(line)
+
+        # 按钮布局 - 使用水平布局使按钮更紧凑
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(8)
+        
+        self.add_btn = QPushButton("添加子菜单")
+        self.add_btn.clicked.connect(self.add_menu)
+        self.add_btn.setMinimumHeight(35)  # 增加按钮高度
+        button_layout.addWidget(self.add_btn)
+
+        self.del_btn = QPushButton("删除菜单")
+        self.del_btn.clicked.connect(self.del_menu)
+        self.del_btn.setMinimumHeight(35)  # 增加按钮高度
+        button_layout.addWidget(self.del_btn)
+        
+        menu_tab_layout.addLayout(button_layout)
+
+        menu_tab_layout.addWidget(QLabel(" "))
+        self.export_btn = QPushButton("导出U8G2 C代码")
+        self.export_btn.setProperty("class", "primary")  # 设置为主要按钮样式
+        self.export_btn.clicked.connect(self.export_code)
+        self.export_btn.setMinimumHeight(40)  # 增加导出按钮高度
+        menu_tab_layout.addWidget(self.export_btn)
+        menu_tab_layout.addStretch()
+        
+        # 添加菜单操作选项卡
+        self.tab_widget.addTab(menu_tab, "📝 菜单")
         
         # === 选项卡2: 屏幕配置 ===
         config_tab = QWidget()
         config_tab_layout = QVBoxLayout(config_tab)
-        config_tab_layout.setSpacing(15)
-        config_tab_layout.setContentsMargins(20, 20, 20, 20)
+        config_tab_layout.setSpacing(10)
+        config_tab_layout.setContentsMargins(15, 15, 15, 15)
         
         # 基本设置组
         basic_group = QGroupBox("基本设置")
         basic_layout = QVBoxLayout(basic_group)
-        basic_layout.setSpacing(10)
-        basic_layout.setContentsMargins(12, 12, 12, 12)
+        basic_layout.setSpacing(8)
+        basic_layout.setContentsMargins(10, 10, 10, 10)
         
         # 屏幕类型选择
         screen_type_layout = QHBoxLayout()
@@ -937,15 +963,15 @@ class MenuDesigner(QWidget):
         screen_size_layout = QHBoxLayout()
         screen_size_layout.addWidget(QLabel("屏幕尺寸:"))
         self.screen_width_edit = QLineEdit("128")
-        self.screen_width_edit.setMaximumWidth(60)
+        self.screen_width_edit.setMaximumWidth(50)
         screen_size_layout.addWidget(self.screen_width_edit)
         screen_size_layout.addWidget(QLabel("×"))
         self.screen_height_edit = QLineEdit("128")
-        self.screen_height_edit.setMaximumWidth(60)
+        self.screen_height_edit.setMaximumWidth(50)
         screen_size_layout.addWidget(self.screen_height_edit)
         self.apply_size_btn = QPushButton("应用")
         self.apply_size_btn.clicked.connect(self.on_apply_screen_size)
-        self.apply_size_btn.setMaximumWidth(60)
+        self.apply_size_btn.setMaximumWidth(50)
         screen_size_layout.addWidget(self.apply_size_btn)
         screen_size_layout.addStretch()
         
@@ -955,8 +981,8 @@ class MenuDesigner(QWidget):
         # 显示设置组
         display_group = QGroupBox("显示设置")
         display_layout = QVBoxLayout(display_group)
-        display_layout.setSpacing(10)
-        display_layout.setContentsMargins(12, 12, 12, 12)
+        display_layout.setSpacing(8)
+        display_layout.setContentsMargins(10, 10, 10, 10)
         
         # 颜色模式选择
         color_mode_layout = QHBoxLayout()
@@ -994,8 +1020,8 @@ class MenuDesigner(QWidget):
         # 颜色配置组（仅TFT模式）
         color_group = QGroupBox("颜色配置 (TFT模式)")
         color_layout = QVBoxLayout(color_group)
-        color_layout.setSpacing(10)
-        color_layout.setContentsMargins(12, 12, 12, 12)
+        color_layout.setSpacing(8)
+        color_layout.setContentsMargins(10, 10, 10, 10)
         
         # 背景颜色选择
         bg_color_layout = QHBoxLayout()
@@ -1005,11 +1031,11 @@ class MenuDesigner(QWidget):
         self.bg_color_btn.setStyleSheet("background-color: rgb(0, 64, 128); color: white;")
         self.bg_color_btn.setProperty("class", "color-btn")
         self.bg_color_btn.clicked.connect(lambda: self.choose_color('bg'))
-        self.bg_color_btn.setMaximumWidth(90)
+        self.bg_color_btn.setMaximumWidth(80)
         bg_color_layout.addWidget(self.bg_color_btn)
         
         self.bg_color_hex = QLineEdit("#004080")
-        self.bg_color_hex.setMaximumWidth(70)
+        self.bg_color_hex.setMaximumWidth(60)
         self.bg_color_hex.textChanged.connect(self.on_hex_color_changed)
         bg_color_layout.addWidget(QLabel("HEX:"))
         bg_color_layout.addWidget(self.bg_color_hex)
@@ -1023,11 +1049,11 @@ class MenuDesigner(QWidget):
         self.font_color_btn.setStyleSheet("background-color: rgb(255, 255, 255); color: black;")
         self.font_color_btn.setProperty("class", "color-btn")
         self.font_color_btn.clicked.connect(lambda: self.choose_color('font'))
-        self.font_color_btn.setMaximumWidth(90)
+        self.font_color_btn.setMaximumWidth(80)
         font_color_layout.addWidget(self.font_color_btn)
         
         self.font_color_hex = QLineEdit("#FFFFFF")
-        self.font_color_hex.setMaximumWidth(70)
+        self.font_color_hex.setMaximumWidth(60)
         self.font_color_hex.textChanged.connect(self.on_hex_color_changed)
         font_color_layout.addWidget(QLabel("HEX:"))
         font_color_layout.addWidget(self.font_color_hex)
@@ -1041,11 +1067,11 @@ class MenuDesigner(QWidget):
         self.selected_bg_btn.setStyleSheet("background-color: rgb(255, 255, 255); color: black;")
         self.selected_bg_btn.setProperty("class", "color-btn")
         self.selected_bg_btn.clicked.connect(lambda: self.choose_color('selected_bg'))
-        self.selected_bg_btn.setMaximumWidth(90)
+        self.selected_bg_btn.setMaximumWidth(80)
         selected_bg_layout.addWidget(self.selected_bg_btn)
         
         self.selected_bg_hex = QLineEdit("#FFFFFF")
-        self.selected_bg_hex.setMaximumWidth(70)
+        self.selected_bg_hex.setMaximumWidth(60)
         self.selected_bg_hex.textChanged.connect(self.on_hex_color_changed)
         selected_bg_layout.addWidget(QLabel("HEX:"))
         selected_bg_layout.addWidget(self.selected_bg_hex)
@@ -1059,11 +1085,11 @@ class MenuDesigner(QWidget):
         self.selected_font_btn.setStyleSheet("background-color: rgb(0, 0, 0); color: white;")
         self.selected_font_btn.setProperty("class", "color-btn")
         self.selected_font_btn.clicked.connect(lambda: self.choose_color('selected_font'))
-        self.selected_font_btn.setMaximumWidth(90)
+        self.selected_font_btn.setMaximumWidth(80)
         selected_font_layout.addWidget(self.selected_font_btn)
         
         self.selected_font_hex = QLineEdit("#000000")
-        self.selected_font_hex.setMaximumWidth(70)
+        self.selected_font_hex.setMaximumWidth(60)
         self.selected_font_hex.textChanged.connect(self.on_hex_color_changed)
         selected_font_layout.addWidget(QLabel("HEX:"))
         selected_font_layout.addWidget(self.selected_font_hex)
@@ -1086,6 +1112,8 @@ class MenuDesigner(QWidget):
         # 添加选项卡控件到右侧布局
         right_layout.addWidget(self.tab_widget)
         
+        main_layout.addWidget(right_widget, 0)  # 右侧固定宽度
+        
         # 现在设置预览控件的相关属性
         self.preview.preview_size_combo = self.preview_size_combo
         self.preview.set_screen_type(
@@ -1095,8 +1123,6 @@ class MenuDesigner(QWidget):
         )
         self.preview.menu_root = self.menu_root
         self.preview.render_menu()
-        
-        main_layout.addWidget(right_widget, 1)
         
         # 连接选项卡切换信号，用于动态显示/隐藏颜色配置
         self.tab_widget.currentChanged.connect(self.on_tab_changed)
@@ -1558,8 +1584,34 @@ class MenuDesigner(QWidget):
     def on_tree_select(self,item):
         node = item.data(0, Qt.UserRole)
         self.current_node = node
+        
+        # 显示属性编辑区域
+        self.properties_widget.setVisible(True)
+        self.selection_label.setVisible(False)
+        
+        # 计算菜单项层级
+        depth = 0
+        parent = node.parent
+        while parent and parent != self.menu_root:
+            depth += 1
+            parent = parent.parent
+        
+        # 更新当前选中项信息标签
+        menu_type = "执行项" if node.is_exec else "子菜单"
+        self.current_item_label.setText(f"当前选中: {node.name} ({menu_type}, 第{depth+1}层)")
+        
+        # 显示选中菜单项的名称
         self.name_edit.setText(node.name)
-        self.callback_edit.setText(node.callback_name)
+        
+        # 显示选中菜单项的回调函数（如果是执行项）
+        if node.is_exec:
+            self.callback_edit.setText(node.callback_name)
+            self.callback_edit.setEnabled(True)
+            self.callback_edit.setPlaceholderText("请输入回调函数名")
+        else:
+            self.callback_edit.setText("")
+            self.callback_edit.setEnabled(False)
+            self.callback_edit.setPlaceholderText("(子菜单项，无需回调函数)")
 
     def update_name(self):
         if self.current_node:
