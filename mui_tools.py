@@ -25,7 +25,7 @@ class MenuItem:
 
 # ---------------- 菜单预览控件 ----------------
 class MenuPreview(QWidget):
-    def __init__(self, fb_w=128, fb_h=64, font_px=8):
+    def __init__(self, fb_w=128, fb_h=128, font_px=8):
         super().__init__()
         self.fb_w = fb_w
         self.fb_h = fb_h
@@ -54,6 +54,9 @@ class MenuPreview(QWidget):
         # 滚动指示器参数
         self.scroll_indicator_width = 10
         self.scroll_thumb_height = 20
+        
+        # 底部导航区域高度
+        self.bottom_nav_height = font_px + 6
 
     def update_preview_size(self):
         """根据屏幕设置更新预览窗口大小"""
@@ -88,45 +91,29 @@ class MenuPreview(QWidget):
         self.color_mode = color_mode
         
         # 根据屏幕类型调整参数
-        if screen_type == "128x64 OLED":
-            self.fb_w, self.fb_h = 128, 64
+        if screen_type == "128x128 OLED":
+            self.fb_w, self.fb_h = 128, 128
             self.base_font_px = 8
-            self.max_lines = 8
+            self.max_lines = 16
             self.bg_color = Qt.black
             self.fg_color = QColor(0, 255, 0)  # OLED绿色
             self.selected_bg_color = QColor(0, 255, 0)
             self.selected_fg_color = Qt.black
-        elif screen_type == "240x240 TFT":
-            self.fb_w, self.fb_h = 240, 240
+        elif screen_type == "128x128 TFT":
+            self.fb_w, self.fb_h = 128, 128
             self.base_font_px = 12
-            self.max_lines = 16
+            self.max_lines = 12
             self.bg_color = QColor(0, 64, 128)  # 深蓝色
             self.fg_color = Qt.white
             self.selected_bg_color = QColor(255, 255, 255)
             self.selected_fg_color = Qt.black
-        elif screen_type == "320x240 TFT":
-            self.fb_w, self.fb_h = 320, 240
-            self.base_font_px = 12
-            self.max_lines = 16
-            self.bg_color = QColor(0, 51, 102)  # 更深的蓝色
-            self.fg_color = Qt.white
-            self.selected_bg_color = QColor(255, 255, 255)
-            self.selected_fg_color = Qt.black
-        elif screen_type == "160x128 LCD":
-            self.fb_w, self.fb_h = 160, 128
+        else:  # 默认使用OLED
+            self.fb_w, self.fb_h = 128, 128
             self.base_font_px = 8
-            self.max_lines = 14
-            self.bg_color = QColor(240, 240, 240)  # 浅灰色
-            self.fg_color = Qt.black
-            self.selected_bg_color = Qt.black
-            self.selected_fg_color = Qt.white
-        else:  # 自定义
-            self.fb_w, self.fb_h = 240, 240
-            self.base_font_px = 10
-            self.max_lines = 20
-            self.bg_color = Qt.gray
-            self.fg_color = Qt.white
-            self.selected_bg_color = Qt.white
+            self.max_lines = 16
+            self.bg_color = Qt.black
+            self.fg_color = QColor(0, 255, 0)  # OLED绿色
+            self.selected_bg_color = QColor(0, 255, 0)
             self.selected_fg_color = Qt.black
         
         # 调整字体大小
@@ -142,7 +129,7 @@ class MenuPreview(QWidget):
         self.framebuffer.setDevicePixelRatio(1.0)
         
         # 为OLED屏幕设置特定格式
-        if self.screen_type == "128x64 OLED":
+        if "OLED" in self.screen_type:
             # 使用单色格式模拟OLED显示
             self.framebuffer.fill(self.bg_color)
         else:
@@ -165,7 +152,7 @@ class MenuPreview(QWidget):
         scale_factor = min(inner_rect.width() / self.fb_w, inner_rect.height() / self.fb_h)
         
         # 根据屏幕类型绘制边框
-        if self.screen_type == "128x64 OLED":
+        if "OLED" in self.screen_type:
             painter.fillRect(frame_rect, QColor(40, 40, 40))
             painter.setPen(QColor(100, 100, 100))
             painter.drawRoundedRect(inner_rect.adjusted(-4, -4, 4, 4), 8, 8)
@@ -173,10 +160,6 @@ class MenuPreview(QWidget):
             painter.fillRect(frame_rect, QColor(60, 60, 80))
             painter.setPen(QColor(100, 120, 140))
             painter.drawRoundedRect(inner_rect.adjusted(-4, -4, 4, 4), 12, 12)
-        elif "LCD" in self.screen_type:
-            painter.fillRect(frame_rect, QColor(200, 200, 200))
-            painter.setPen(QColor(150, 150, 150))
-            painter.drawRoundedRect(inner_rect.adjusted(-4, -4, 4, 4), 8, 8)
         else:
             painter.fillRect(frame_rect, QColor(80, 80, 80))
             painter.setPen(QColor(120, 120, 120))
@@ -211,7 +194,7 @@ class MenuPreview(QWidget):
         scaled_y = inner_rect.y() + (inner_rect.height() - scaled_height) // 2
         
         # 使用最适合的缩放方法
-        if self.screen_type == "128x64 OLED":
+        if "OLED" in self.screen_type:
             # OLED屏幕使用最近邻插值保持像素清晰
             transformed = self.framebuffer.scaled(
                 scaled_width, 
@@ -248,7 +231,7 @@ class MenuPreview(QWidget):
         scrollbar_width = 10 * scale_factor
         
         # 绘制滚动条背景
-        scrollbar_color = QColor(60, 60, 60) if self.screen_type == "128x64 OLED" else QColor(100, 100, 100)
+        scrollbar_color = QColor(60, 60, 60) if "OLED" in self.screen_type else QColor(100, 100, 100)
         painter.fillRect(int(scrollbar_x), int(scrollbar_y), int(scrollbar_width), int(scrollbar_height), scrollbar_color)
         
         # 计算滑块大小和位置
@@ -260,7 +243,7 @@ class MenuPreview(QWidget):
         thumb_y = scrollbar_y + int((scrollbar_height - thumb_height) * current_pos_ratio)
         
         # 绘制滑块
-        thumb_color = QColor(80, 255, 80) if self.screen_type == "128x64 OLED" else QColor(150, 150, 255)
+        thumb_color = QColor(80, 255, 80) if "OLED" in self.screen_type else QColor(150, 150, 255)
         painter.fillRect(int(scrollbar_x), int(thumb_y), int(scrollbar_width), int(thumb_height), thumb_color)
 
     def render_menu(self):
@@ -284,6 +267,23 @@ class MenuPreview(QWidget):
             self.update()
             return
         
+        # 绘制菜单项
+        painter = QPainter(self.framebuffer)
+        painter.setPen(self.fg_color)
+        font = self._get_font()
+        painter.setFont(font)
+        
+        # 设置渲染提示，提高文本清晰度
+        # 对于像素级显示，禁用抗锯齿可能更清晰
+        if "OLED" in self.screen_type:
+            painter.setRenderHint(QPainter.Antialiasing, False)
+            painter.setRenderHint(QPainter.TextAntialiasing, False)
+            painter.setRenderHint(QPainter.SmoothPixmapTransform, False)  # 禁用平滑变换
+        else:
+            painter.setRenderHint(QPainter.Antialiasing, True)
+            painter.setRenderHint(QPainter.TextAntialiasing, True)
+            painter.setRenderHint(QPainter.SmoothPixmapTransform, True)  # 启用平滑变换
+        
         # 计算显示起始位置
         if max_lines >= total:
             start = 0
@@ -301,31 +301,39 @@ class MenuPreview(QWidget):
             # 计算当前页码
             self.current_page = start // max_lines
         
-        # 绘制菜单项
-        painter = QPainter(self.framebuffer)
-        painter.setPen(self.fg_color)
-        font = self._get_font()
-        painter.setFont(font)
+ # 固定底部导航高度，始终显示底部导航组件
+        bottom_nav_height = self.base_font_px + 6  # 底部导航区域高度
         
-        # 设置渲染提示，提高文本清晰度
-        # 对于像素级显示，禁用抗锯齿可能更清晰
-        if self.screen_type == "128x64 OLED":
-            painter.setRenderHint(QPainter.Antialiasing, False)
-            painter.setRenderHint(QPainter.TextAntialiasing, False)
-            painter.setRenderHint(QPainter.SmoothPixmapTransform, False)  # 禁用平滑变换
+        # 调整最大行数以适应底部导航
+        effective_height = self.fb_h - bottom_nav_height
+        max_lines = effective_height // (self.base_font_px + 2)  # 重新计算最大行数
+        max_lines = max(max_lines, 1)  # 确保至少显示一行
+        
+        # 重新计算显示起始位置
+        if max_lines >= total:
+            start = 0
+            self.show_scrollbar = False
         else:
-            painter.setRenderHint(QPainter.Antialiasing, True)
-            painter.setRenderHint(QPainter.TextAntialiasing, True)
-            painter.setRenderHint(QPainter.SmoothPixmapTransform, True)  # 启用平滑变换
+            self.show_scrollbar = True
+            # 更智能的滚动逻辑：光标位于合理位置
+            if self.cursor_index < max_lines // 2:
+                start = 0
+            elif self.cursor_index >= total - max_lines // 2:
+                start = max(0, total - max_lines)
+            else:
+                start = self.cursor_index - max_lines // 2
+            
+            # 计算当前页码
+            self.current_page = start // max_lines
         
         # 计算字符宽度和最大显示长度
         char_width = self.base_font_px * 0.6  # 估算字符宽度
-        if self.screen_type == "128x64 OLED":
+        if "OLED" in self.screen_type:
             max_name_length = 12  # OLED屏幕显示较短
         elif "TFT" in self.screen_type:
-            max_name_length = 18  # TFT屏幕显示较长
+            max_name_length = 14  # TFT屏幕显示适中
         else:
-            max_name_length = 15  # 其他屏幕
+            max_name_length = 14  # 其他屏幕
             
         for i in range(max_lines):
             idx = start + i
@@ -359,16 +367,16 @@ class MenuPreview(QWidget):
             
             # 绘制选中项
             if idx == self.cursor_index:
-                # 绘制选中背景
+                # 绘制完整的选中背景，保持原来的样子
                 painter.fillRect(0, y - line_h, self.fb_w, line_h, self.selected_bg_color)
                 painter.setPen(self.selected_fg_color)
                 
                 # 绘制选中项内容
-                prefix = "►" if self.screen_type == "128x64 OLED" else "▶"
+                prefix = "►" if "OLED" in self.screen_type else "▶"
                 suffix = " »" if not item.is_exec else ""
                 text = f"{prefix} {indent}{display_name}{suffix}"
                 # 使用更适合像素级显示的文本渲染方法
-                if self.screen_type == "128x64 OLED":
+                if "OLED" in self.screen_type:
                     # OLED使用精确的像素位置，使用整数坐标避免亚像素模糊
                     text_x = 2
                     text_y = y - 1  # 微调垂直位置
@@ -392,7 +400,7 @@ class MenuPreview(QWidget):
                 suffix = " ▷" if not item.is_exec else "  "
                 text = f"{prefix} {indent}{display_name}{suffix}"
                 # 使用更适合像素级显示的文本渲染方法
-                if self.screen_type == "128x64 OLED":
+                if "OLED" in self.screen_type:
                     # OLED使用精确的像素位置，使用整数坐标避免亚像素模糊
                     text_x = 2
                     text_y = y - 1  # 微调垂直位置
@@ -402,22 +410,137 @@ class MenuPreview(QWidget):
                     rect = painter.boundingRect(2, y - line_h, self.fb_w - 4, line_h, Qt.AlignLeft | Qt.AlignVCenter, text)
                     painter.drawText(rect, Qt.AlignLeft | Qt.AlignVCenter, text)
         
-        # 绘制页码信息（如果有多页）
+        # 绘制底部固定导航组件，始终显示
+        # 底部导航背景
+        bottom_bg_color = QColor(30, 30, 40) if "OLED" in self.screen_type else QColor(50, 60, 80)
+        painter.fillRect(0, self.fb_h - bottom_nav_height, self.fb_w, bottom_nav_height, bottom_bg_color)
+        
+        # 绘制分隔线
+        separator_color = QColor(80, 80, 90) if "OLED" in self.screen_type else QColor(120, 130, 150)
+        painter.setPen(separator_color)
+        painter.drawLine(0, self.fb_h - bottom_nav_height, self.fb_w, self.fb_h - bottom_nav_height)
+        
+        # 设置导航文本颜色
+        nav_text_color = QColor(200, 200, 220) if "OLED" in self.screen_type else QColor(240, 240, 250)
+        painter.setPen(nav_text_color)
+        
+        # 绘制页面数量指示器
         if max_lines < total:
+            # 有多页时显示页码信息
             page_text = f"第 {self.current_page + 1}/{(total - 1) // max_lines + 1} 页"
-            painter.setPen(self.fg_color)
-            # 使用更好的文本渲染方法
-            rect = painter.boundingRect(0, self.fb_h - 20, self.fb_w, 15, Qt.AlignCenter, page_text)
-            painter.drawText(rect, Qt.AlignCenter, page_text)
+            
+            # 居中显示页码信息
+            if "OLED" in self.screen_type:
+                # OLED使用精确的像素位置
+                painter.drawText(self.fb_w // 2 - 30, self.fb_h - 4, page_text)
+            else:
+                # 其他屏幕使用更好的渲染方法
+                rect = painter.boundingRect(0, self.fb_h - bottom_nav_height, self.fb_w, bottom_nav_height, Qt.AlignCenter, page_text)
+                painter.drawText(rect, Qt.AlignCenter, page_text)
+            
+            # 绘制左箭头导航
+            if self.current_page > 0:
+                arrow_left = "◀"
+                painter.drawText(10, self.fb_h - 4, arrow_left)
+            
+            # 绘制右箭头导航
+            if self.current_page < (total - 1) // max_lines:
+                arrow_right = "▶"
+                painter.drawText(self.fb_w - 20, self.fb_h - 4, arrow_right)
+        else:
+            # 只有一页时只显示项数
+            item_text = f"共 {total} 项"
+            
+            # 居中显示项数信息
+            if "OLED" in self.screen_type:
+                # OLED使用精确的像素位置
+                painter.drawText(self.fb_w // 2 - 20, self.fb_h - 4, item_text)
+            else:
+                # 其他屏幕使用更好的渲染方法
+                rect = painter.boundingRect(0, self.fb_h - bottom_nav_height, self.fb_w, bottom_nav_height, Qt.AlignCenter, item_text)
+                painter.drawText(rect, Qt.AlignCenter, item_text)
         
         painter.end()
         self.update()
+    
+    def mousePressEvent(self, event):
+        """处理鼠标点击事件，实现底部导航功能"""
+        if event.button() == Qt.LeftButton:
+            # 获取点击位置
+            click_x = event.position().x()
+            click_y = event.position().y()
+            
+            # 计算内部区域位置（排除边框）
+            frame_rect = self.rect()
+            inner_rect = frame_rect.adjusted(25, 25, -25, -25)
+            
+            # 获取预览大小设置
+            preview_size_text = self.preview_size_combo.currentText() if hasattr(self, 'preview_size_combo') else "放大2倍"
+            
+            # 根据预览大小设置确定缩放比例
+            if preview_size_text == "实际大小":
+                user_scale = 1
+            elif preview_size_text == "放大1.5倍":
+                user_scale = 1.5
+            elif preview_size_text == "放大2倍":
+                user_scale = 2
+            elif preview_size_text == "放大3倍":
+                user_scale = 3
+            else:
+                user_scale = 2  # 默认放大2倍
+            
+            # 计算缩放后的屏幕区域
+            int_scale = int(user_scale)
+            if user_scale - int_scale > 0.7:
+                int_scale += 1
+            
+            scaled_width = int(self.fb_w * int_scale)
+            scaled_height = int(self.fb_h * int_scale)
+            scaled_x = inner_rect.x() + (inner_rect.width() - scaled_width) // 2
+            scaled_y = inner_rect.y() + (inner_rect.height() - scaled_height) // 2
+            
+            # 底部导航区域高度（缩放后）
+            scaled_bottom_nav_height = self.bottom_nav_height * int_scale
+            scaled_bottom_nav_y = scaled_y + scaled_height - scaled_bottom_nav_height
+            
+            # 检查点击是否在底部导航区域内
+            if (scaled_x <= click_x <= scaled_x + scaled_width and 
+                scaled_bottom_nav_y <= click_y <= scaled_y + scaled_height):
+                
+                # 计算点击位置在底部导航区域的相对位置
+                relative_x = click_x - scaled_x
+                relative_y = click_y - scaled_bottom_nav_y
+                
+                # 获取可见菜单项
+                if self.menu_root:
+                    visible = [c for c in self.menu_root.children if c.visible]
+                    total = len(visible)
+                    if total > 0:
+                        # 计算最大行数
+                        effective_height = self.fb_h - self.bottom_nav_height
+                        max_lines = effective_height // (self.base_font_px + 2)
+                        max_lines = max(max_lines, 1)
+                        
+                        # 检查是否点击了左箭头导航
+                        if relative_x < 30 and self.current_page > 0:
+                            # 上一页
+                            self.cursor_index = max(0, self.cursor_index - max_lines)
+                            self.render_menu()
+                        
+                        # 检查是否点击了右箭头导航
+                        elif relative_x > scaled_width - 30 and self.current_page < (total - 1) // max_lines:
+                            # 下一页
+                            self.cursor_index = min(total - 1, self.cursor_index + max_lines)
+                            self.render_menu()
+        
+        # 调用父类的鼠标事件处理
+        super().mousePressEvent(event)
 
     def _get_font(self):
         """获取合适的字体"""
         from PySide6.QtGui import QFont
         # 使用更适合像素级显示的字体
-        if self.screen_type == "128x64 OLED":
+        if "OLED" in self.screen_type:
             # OLED屏幕使用更适合低分辨率显示的字体
             font = QFont("Courier New", max(self.base_font_px, 8))  # 使用等宽字体，最小8px
             font.setStyleStrategy(QFont.NoAntialias)  # 禁用抗锯齿，保持像素级清晰
@@ -447,6 +570,17 @@ class MenuDesigner(QWidget):
         self.menu_root.add_child(MenuItem("系统设置"))
         self.menu_root.add_child(MenuItem("数据显示"))
         self.menu_root.add_child(MenuItem("设备控制"))
+        self.menu_root.add_child(MenuItem("通信设置"))
+        self.menu_root.add_child(MenuItem("时间日期"))
+        self.menu_root.add_child(MenuItem("网络配置"))
+        self.menu_root.add_child(MenuItem("安全设置"))
+        self.menu_root.add_child(MenuItem("用户管理"))
+        self.menu_root.add_child(MenuItem("日志记录"))
+        self.menu_root.add_child(MenuItem("系统信息"))
+        self.menu_root.add_child(MenuItem("诊断工具"))
+        self.menu_root.add_child(MenuItem("固件更新"))
+        self.menu_root.add_child(MenuItem("备份恢复"))
+        self.menu_root.add_child(MenuItem("工厂重置"))
         self.current_node = self.menu_root
 
         # 主布局
@@ -509,10 +643,25 @@ class MenuDesigner(QWidget):
         screen_type_layout = QHBoxLayout()
         screen_type_layout.addWidget(QLabel("屏幕类型:"))
         self.screen_type_combo = QComboBox()
-        self.screen_type_combo.addItems(["128x64 OLED", "240x240 TFT", "320x240 TFT", "160x128 LCD", "自定义"])
+        self.screen_type_combo.addItems(["128x128 OLED", "128x128 TFT"])
         self.screen_type_combo.currentTextChanged.connect(self.on_screen_type_changed)
         screen_type_layout.addWidget(self.screen_type_combo)
         screen_type_layout.addStretch()
+        
+        # 屏幕尺寸设置
+        screen_size_layout = QHBoxLayout()
+        screen_size_layout.addWidget(QLabel("屏幕尺寸:"))
+        self.screen_width_edit = QLineEdit("128")
+        self.screen_width_edit.setMaximumWidth(50)
+        screen_size_layout.addWidget(self.screen_width_edit)
+        screen_size_layout.addWidget(QLabel("×"))
+        self.screen_height_edit = QLineEdit("128")
+        self.screen_height_edit.setMaximumWidth(50)
+        screen_size_layout.addWidget(self.screen_height_edit)
+        self.apply_size_btn = QPushButton("应用尺寸")
+        self.apply_size_btn.clicked.connect(self.on_apply_screen_size)
+        screen_size_layout.addWidget(self.apply_size_btn)
+        screen_size_layout.addStretch()
         
         # 颜色模式选择
         color_mode_layout = QHBoxLayout()
@@ -543,6 +692,7 @@ class MenuDesigner(QWidget):
         preview_size_layout.addStretch()
         
         screen_config_layout.addLayout(screen_type_layout)
+        screen_config_layout.addLayout(screen_size_layout)
         screen_config_layout.addLayout(color_mode_layout)
         screen_config_layout.addLayout(font_size_layout)
         screen_config_layout.addLayout(preview_size_layout)
@@ -600,15 +750,12 @@ class MenuDesigner(QWidget):
         screen_type = self.screen_type_combo.currentText()
         
         # 根据屏幕类型设置默认参数
-        if screen_type == "128x64 OLED":
+        if "OLED" in screen_type:
             self.color_mode_combo.setCurrentText("单色")
             self.font_size_combo.setCurrentText("小(8px)")
-        elif screen_type in ["240x240 TFT", "320x240 TFT"]:
+        elif "TFT" in screen_type:
             self.color_mode_combo.setCurrentText("16色")
             self.font_size_combo.setCurrentText("中(12px)")
-        elif screen_type == "160x128 LCD":
-            self.color_mode_combo.setCurrentText("单色")
-            self.font_size_combo.setCurrentText("小(8px)")
         
         # 更新预览
         self.on_screen_config_changed()
@@ -630,6 +777,58 @@ class MenuDesigner(QWidget):
         self.preview.preview_size_combo = self.preview_size_combo
         self.preview.update_preview_size()
         self.preview.render_menu()
+    
+    def on_apply_screen_size(self):
+        """应用用户自定义的屏幕尺寸"""
+        try:
+            width = int(self.screen_width_edit.text())
+            height = int(self.screen_height_edit.text())
+            
+            # 限制屏幕尺寸范围
+            width = max(64, min(width, 800))
+            height = max(64, min(height, 800))
+            
+            # 更新预览控件的屏幕尺寸
+            screen_type = self.screen_type_combo.currentText()
+            color_mode = self.color_mode_combo.currentText()
+            font_size = self.font_size_combo.currentText()
+            
+            # 更新预览屏幕尺寸
+            self.preview.fb_w = width
+            self.preview.fb_h = height
+            
+            # 重新创建framebuffer
+            self.preview.framebuffer = QPixmap(width, height)
+            
+            # 根据屏幕类型设置颜色
+            if "OLED" in screen_type:
+                self.preview.bg_color = Qt.black
+                self.preview.fg_color = QColor(0, 255, 0)  # OLED绿色
+                self.preview.selected_bg_color = QColor(0, 255, 0)
+                self.preview.selected_fg_color = Qt.black
+            else:  # TFT
+                self.preview.bg_color = QColor(0, 64, 128)  # 深蓝色
+                self.preview.fg_color = Qt.white
+                self.preview.selected_bg_color = QColor(255, 255, 255)
+                self.preview.selected_fg_color = Qt.black
+            
+            self.preview.framebuffer.fill(self.preview.bg_color)
+            
+            # 根据高度调整最大行数
+            self.preview.max_lines = max(8, height // 10)  # 假设每行10px高
+            
+            # 更新预览
+            self.preview.update_preview_size()
+            self.preview.render_menu()
+            
+            # 更新输入框中的值，确保显示的是实际应用的值
+            self.screen_width_edit.setText(str(width))
+            self.screen_height_edit.setText(str(height))
+            
+        except ValueError:
+            # 处理无效输入
+            self.screen_width_edit.setText(str(self.preview.fb_w))
+            self.screen_height_edit.setText(str(self.preview.fb_h))
         
     # ---------------- Tree操作 ----------------
     def refresh_tree(self):
