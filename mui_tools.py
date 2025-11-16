@@ -85,7 +85,8 @@ class MenuPreview(QWidget):
         # 设置预览窗口大小
         self.setFixedSize(frame_width, frame_height)
 
-    def set_screen_type(self, screen_type, color_mode="单色", font_size="小(8px)"):
+    def set_screen_type(self, screen_type, color_mode="单色", font_size="小(8px)", 
+                        font_color="白色", bg_color="深蓝色", selected_bg="白色", selected_font="黑色"):
         """设置屏幕类型和相关参数"""
         self.screen_type = screen_type
         self.color_mode = color_mode
@@ -103,10 +104,122 @@ class MenuPreview(QWidget):
             self.fb_w, self.fb_h = 128, 128
             self.base_font_px = 12
             self.max_lines = 12
-            self.bg_color = QColor(0, 64, 128)  # 深蓝色
-            self.fg_color = Qt.white
-            self.selected_bg_color = QColor(255, 255, 255)
-            self.selected_fg_color = Qt.black
+            
+            # 设置背景颜色 - 支持HEX颜色
+            if bg_color.startswith('#'):
+                # HEX颜色输入
+                color = QColor(bg_color)
+                if color.isValid():
+                    self.bg_color = color
+                else:
+                    self.bg_color = QColor(0, 64, 128)  # 默认深蓝色
+            else:
+                # 预设颜色名称
+                if bg_color == "深蓝色":
+                    self.bg_color = QColor(0, 64, 128)
+                elif bg_color == "黑色":
+                    self.bg_color = Qt.black
+                elif bg_color == "深灰色":
+                    self.bg_color = QColor(64, 64, 64)
+                elif bg_color == "深绿色":
+                    self.bg_color = QColor(0, 64, 32)
+                elif bg_color == "深红色":
+                    self.bg_color = QColor(64, 0, 32)
+                elif bg_color == "深紫色":
+                    self.bg_color = QColor(32, 0, 64)
+                elif bg_color == "深青色":
+                    self.bg_color = QColor(0, 64, 64)
+                else:
+                    self.bg_color = QColor(0, 64, 128)
+            
+            # 设置字体颜色 - 支持HEX颜色
+            if font_color.startswith('#'):
+                # HEX颜色输入
+                color = QColor(font_color)
+                if color.isValid():
+                    self.fg_color = color
+                else:
+                    self.fg_color = Qt.white  # 默认白色
+            else:
+                # 预设颜色名称
+                if font_color == "白色":
+                    self.fg_color = Qt.white
+                elif font_color == "黑色":
+                    self.fg_color = Qt.black
+                elif font_color == "红色":
+                    self.fg_color = QColor(255, 0, 0)
+                elif font_color == "绿色":
+                    self.fg_color = QColor(0, 255, 0)
+                elif font_color == "蓝色":
+                    self.fg_color = QColor(0, 0, 255)
+                elif font_color == "黄色":
+                    self.fg_color = QColor(255, 255, 0)
+                elif font_color == "青色":
+                    self.fg_color = QColor(0, 255, 255)
+                elif font_color == "品红色":
+                    self.fg_color = QColor(255, 0, 255)
+                elif font_color == "橙色":
+                    self.fg_color = QColor(255, 165, 0)
+                elif font_color == "紫色":
+                    self.fg_color = QColor(128, 0, 128)
+                else:
+                    self.fg_color = Qt.white
+            
+            # 设置选中项背景颜色 - 支持HEX颜色
+            if selected_bg.startswith('#'):
+                # HEX颜色输入
+                color = QColor(selected_bg)
+                if color.isValid():
+                    self.selected_bg_color = color
+                else:
+                    self.selected_bg_color = Qt.white  # 默认白色
+            else:
+                # 预设颜色名称
+                if selected_bg == "白色":
+                    self.selected_bg_color = Qt.white
+                elif selected_bg == "浅灰色":
+                    self.selected_bg_color = QColor(192, 192, 192)
+                elif selected_bg == "浅蓝色":
+                    self.selected_bg_color = QColor(173, 216, 230)
+                elif selected_bg == "浅绿色":
+                    self.selected_bg_color = QColor(144, 238, 144)
+                elif selected_bg == "浅黄色":
+                    self.selected_bg_color = QColor(255, 255, 224)
+                elif selected_bg == "浅青色":
+                    self.selected_bg_color = QColor(224, 255, 255)
+                elif selected_bg == "浅红色":
+                    self.selected_bg_color = QColor(255, 228, 225)
+                else:
+                    self.selected_bg_color = Qt.white
+            
+            # 设置选中项字体颜色 - 支持HEX颜色
+            if selected_font.startswith('#'):
+                # HEX颜色输入
+                color = QColor(selected_font)
+                if color.isValid():
+                    self.selected_fg_color = color
+                else:
+                    self.selected_fg_color = Qt.black  # 默认黑色
+            else:
+                # 预设颜色名称
+                if selected_font == "黑色":
+                    self.selected_fg_color = Qt.black
+                elif selected_font == "白色":
+                    self.selected_fg_color = Qt.white
+                elif selected_font == "红色":
+                    self.selected_fg_color = QColor(255, 0, 0)
+                elif selected_font == "绿色":
+                    self.selected_fg_color = QColor(0, 255, 0)
+                elif selected_font == "蓝色":
+                    self.selected_fg_color = QColor(0, 0, 255)
+                elif selected_font == "黄色":
+                    self.selected_fg_color = QColor(255, 255, 0)
+                elif selected_font == "青色":
+                    self.selected_fg_color = QColor(0, 255, 255)
+                elif selected_font == "品红色":
+                    self.selected_fg_color = QColor(255, 0, 255)
+                else:
+                    self.selected_fg_color = Qt.black
         else:  # 默认使用OLED
             self.fb_w, self.fb_h = 128, 128
             self.base_font_px = 8
@@ -612,8 +725,18 @@ class MenuDesigner(QWidget):
         self.current_settings = {
             'font_size': '中(12px)',
             'color_mode': '单色',
-            'preview_size': '放大2倍'
+            'preview_size': '放大2倍',
+            'bg_color': '#004080',
+            'font_color': '#FFFFFF',
+            'selected_bg': '#FFFFFF',
+            'selected_font': '#000000'
         }
+        
+        # 加载保存的设置
+        self.load_settings()
+        
+        # 应用加载的设置到界面
+        self.apply_loaded_settings()
 
         # 根菜单
         self.menu_root = MenuItem("根菜单", is_exec=False)
@@ -722,6 +845,74 @@ class MenuDesigner(QWidget):
         color_mode_layout.addWidget(self.color_mode_combo)
         color_mode_layout.addStretch()
         
+        # 背景颜色选择（仅TFT模式）- 支持颜色选择器
+        bg_color_layout = QHBoxLayout()
+        bg_color_layout.addWidget(QLabel("背景颜色:"))
+        self.bg_color_btn = QPushButton()
+        self.bg_color_btn.setText("选择颜色")
+        self.bg_color_btn.setStyleSheet("background-color: rgb(0, 64, 128); color: white;")
+        self.bg_color_btn.clicked.connect(lambda: self.choose_color('bg'))
+        self.bg_color_btn.setMaximumWidth(80)
+        bg_color_layout.addWidget(self.bg_color_btn)
+        
+        self.bg_color_hex = QLineEdit("#004080")
+        self.bg_color_hex.setMaximumWidth(60)
+        self.bg_color_hex.textChanged.connect(self.on_hex_color_changed)
+        bg_color_layout.addWidget(QLabel("HEX:"))
+        bg_color_layout.addWidget(self.bg_color_hex)
+        bg_color_layout.addStretch()
+        
+        # 字体颜色选择（仅TFT模式）- 支持颜色选择器
+        font_color_layout = QHBoxLayout()
+        font_color_layout.addWidget(QLabel("字体颜色:"))
+        self.font_color_btn = QPushButton()
+        self.font_color_btn.setText("选择颜色")
+        self.font_color_btn.setStyleSheet("background-color: rgb(255, 255, 255); color: black;")
+        self.font_color_btn.clicked.connect(lambda: self.choose_color('font'))
+        self.font_color_btn.setMaximumWidth(80)
+        font_color_layout.addWidget(self.font_color_btn)
+        
+        self.font_color_hex = QLineEdit("#FFFFFF")
+        self.font_color_hex.setMaximumWidth(60)
+        self.font_color_hex.textChanged.connect(self.on_hex_color_changed)
+        font_color_layout.addWidget(QLabel("HEX:"))
+        font_color_layout.addWidget(self.font_color_hex)
+        font_color_layout.addStretch()
+        
+        # 选中项背景颜色（仅TFT模式）- 支持颜色选择器
+        selected_bg_layout = QHBoxLayout()
+        selected_bg_layout.addWidget(QLabel("选中背景:"))
+        self.selected_bg_btn = QPushButton()
+        self.selected_bg_btn.setText("选择颜色")
+        self.selected_bg_btn.setStyleSheet("background-color: rgb(255, 255, 255); color: black;")
+        self.selected_bg_btn.clicked.connect(lambda: self.choose_color('selected_bg'))
+        self.selected_bg_btn.setMaximumWidth(80)
+        selected_bg_layout.addWidget(self.selected_bg_btn)
+        
+        self.selected_bg_hex = QLineEdit("#FFFFFF")
+        self.selected_bg_hex.setMaximumWidth(60)
+        self.selected_bg_hex.textChanged.connect(self.on_hex_color_changed)
+        selected_bg_layout.addWidget(QLabel("HEX:"))
+        selected_bg_layout.addWidget(self.selected_bg_hex)
+        selected_bg_layout.addStretch()
+        
+        # 选中项字体颜色（仅TFT模式）- 支持颜色选择器
+        selected_font_layout = QHBoxLayout()
+        selected_font_layout.addWidget(QLabel("选中字体:"))
+        self.selected_font_btn = QPushButton()
+        self.selected_font_btn.setText("选择颜色")
+        self.selected_font_btn.setStyleSheet("background-color: rgb(0, 0, 0); color: white;")
+        self.selected_font_btn.clicked.connect(lambda: self.choose_color('selected_font'))
+        self.selected_font_btn.setMaximumWidth(80)
+        selected_font_layout.addWidget(self.selected_font_btn)
+        
+        self.selected_font_hex = QLineEdit("#000000")
+        self.selected_font_hex.setMaximumWidth(60)
+        self.selected_font_hex.textChanged.connect(self.on_hex_color_changed)
+        selected_font_layout.addWidget(QLabel("HEX:"))
+        selected_font_layout.addWidget(self.selected_font_hex)
+        selected_font_layout.addStretch()
+        
         # 字体大小选择
         font_size_layout = QHBoxLayout()
         font_size_layout.addWidget(QLabel("字体大小:"))
@@ -745,6 +936,10 @@ class MenuDesigner(QWidget):
         screen_config_layout.addLayout(screen_type_layout)
         screen_config_layout.addLayout(screen_size_layout)
         screen_config_layout.addLayout(color_mode_layout)
+        screen_config_layout.addLayout(bg_color_layout)
+        screen_config_layout.addLayout(font_color_layout)
+        screen_config_layout.addLayout(selected_bg_layout)
+        screen_config_layout.addLayout(selected_font_layout)
         screen_config_layout.addLayout(font_size_layout)
         screen_config_layout.addLayout(preview_size_layout)
         right_layout.addWidget(screen_config_group)
@@ -839,10 +1034,32 @@ class MenuDesigner(QWidget):
         """屏幕配置改变时更新预览"""
         # 确保预览大小控件已传递
         self.preview.preview_size_combo = self.preview_size_combo
+        
+        # 获取所有颜色设置 - 从HEX输入框获取实际的颜色值
+        font_color = self.font_color_hex.text().strip() if hasattr(self, 'font_color_hex') else "#FFFFFF"
+        bg_color = self.bg_color_hex.text().strip() if hasattr(self, 'bg_color_hex') else "#004080"
+        selected_bg = self.selected_bg_hex.text().strip() if hasattr(self, 'selected_bg_hex') else "#FFFFFF"
+        selected_font = self.selected_font_hex.text().strip() if hasattr(self, 'selected_font_hex') else "#000000"
+        
+        # 如果HEX值为空，使用默认值
+        if not font_color or not font_color.startswith('#'):
+            font_color = "#FFFFFF"
+        if not bg_color or not bg_color.startswith('#'):
+            bg_color = "#004080"
+        if not selected_bg or not selected_bg.startswith('#'):
+            selected_bg = "#FFFFFF"
+        if not selected_font or not selected_font.startswith('#'):
+            selected_font = "#000000"
+        
+        # 传递所有颜色参数
         self.preview.set_screen_type(
             self.screen_type_combo.currentText(),
             self.color_mode_combo.currentText(),
-            self.font_size_combo.currentText()
+            self.font_size_combo.currentText(),
+            font_color,
+            bg_color,
+            selected_bg,
+            selected_font
         )
         self.preview.render_menu()
     
@@ -904,6 +1121,241 @@ class MenuDesigner(QWidget):
             # 处理无效输入
             self.screen_width_edit.setText(str(self.preview.fb_w))
             self.screen_height_edit.setText(str(self.preview.fb_h))
+    
+    # ---------------- 颜色选择器方法 ----------------
+    def choose_color(self, color_type):
+        """打开颜色选择器"""
+        from PySide6.QtWidgets import QColorDialog
+        from PySide6.QtCore import Qt
+        
+        # 获取当前颜色
+        if color_type == 'bg':
+            current_color = QColor(0, 64, 128)  # 默认深蓝色
+            if hasattr(self.preview, 'bg_color'):
+                current_color = self.preview.bg_color
+            btn = self.bg_color_btn
+            hex_input = self.bg_color_hex
+        elif color_type == 'font':
+            current_color = Qt.white  # 默认白色
+            if hasattr(self.preview, 'fg_color'):
+                current_color = self.preview.fg_color
+            btn = self.font_color_btn
+            hex_input = self.font_color_hex
+        elif color_type == 'selected_bg':
+            current_color = Qt.white  # 默认白色
+            if hasattr(self.preview, 'selected_bg_color'):
+                current_color = self.preview.selected_bg_color
+            btn = self.selected_bg_btn
+            hex_input = self.selected_bg_hex
+        elif color_type == 'selected_font':
+            current_color = Qt.black  # 默认黑色
+            if hasattr(self.preview, 'selected_fg_color'):
+                current_color = self.preview.selected_fg_color
+            btn = self.selected_font_btn
+            hex_input = self.selected_font_hex
+        else:
+            return
+        
+        # 打开颜色选择器
+        color = QColorDialog.getColor(current_color, self, f"选择{color_type}颜色")
+        if color.isValid():
+            # 更新按钮颜色
+            btn.setStyleSheet(f"background-color: {color.name()}; color: {'white' if color.lightness() < 128 else 'black'};")
+            
+            # 更新HEX输入框
+            hex_input.setText(color.name().upper())
+            
+            # 更新预览
+            self.on_screen_config_changed()
+    
+    def on_hex_color_changed(self):
+        """处理HEX颜色输入变化"""
+        sender = self.sender()
+        if not sender:
+            return
+            
+        hex_color = sender.text().strip()
+        if not hex_color.startswith('#'):
+            return
+            
+        try:
+            # 解析HEX颜色
+            color = QColor(hex_color)
+            if not color.isValid():
+                return
+                
+            # 根据发送者确定颜色类型并更新
+            if sender == self.bg_color_hex:
+                self.bg_color_btn.setStyleSheet(f"background-color: {color.name()}; color: {'white' if color.lightness() < 128 else 'black'};")
+            elif sender == self.font_color_hex:
+                self.font_color_btn.setStyleSheet(f"background-color: {color.name()}; color: {'white' if color.lightness() < 128 else 'black'};")
+            elif sender == self.selected_bg_hex:
+                self.selected_bg_btn.setStyleSheet(f"background-color: {color.name()}; color: {'white' if color.lightness() < 128 else 'black'};")
+            elif sender == self.selected_font_hex:
+                self.selected_font_btn.setStyleSheet(f"background-color: {color.name()}; color: {'white' if color.lightness() < 128 else 'black'};")
+            
+            # 更新预览
+            self.on_screen_config_changed()
+        except:
+            pass  # 忽略无效的HEX输入
+    
+    # ---------------- 设置保存和加载 ----------------
+    def save_settings(self):
+        """保存当前设置到文件"""
+        import json
+        import os
+        
+        settings = {
+            'screen_type': self.screen_type_combo.currentText(),
+            'color_mode': self.color_mode_combo.currentText(),
+            'font_size': self.font_size_combo.currentText(),
+            'preview_size': self.preview_size_combo.currentText(),
+            'bg_color': self.bg_color_hex.text().strip() if hasattr(self, 'bg_color_hex') else "#004080",
+            'font_color': self.font_color_hex.text().strip() if hasattr(self, 'font_color_hex') else "#FFFFFF",
+            'selected_bg': self.selected_bg_hex.text().strip() if hasattr(self, 'selected_bg_hex') else "#FFFFFF",
+            'selected_font': self.selected_font_hex.text().strip() if hasattr(self, 'selected_font_hex') else "#000000",
+            'screen_width': self.screen_width_edit.text(),
+            'screen_height': self.screen_height_edit.text()
+        }
+        
+        try:
+            settings_file = os.path.join(os.path.dirname(__file__), 'menu_designer_settings.json')
+            with open(settings_file, 'w', encoding='utf-8') as f:
+                json.dump(settings, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            print(f"保存设置失败: {e}")
+    
+    def load_settings(self):
+        """从文件加载设置"""
+        import json
+        import os
+        
+        settings_file = os.path.join(os.path.dirname(__file__), 'menu_designer_settings.json')
+        
+        if os.path.exists(settings_file):
+            try:
+                with open(settings_file, 'r', encoding='utf-8') as f:
+                    settings = json.load(f)
+                    self.current_settings.update(settings)
+            except Exception as e:
+                print(f"加载设置失败: {e}")
+    
+    def apply_loaded_settings(self):
+        """应用加载的设置到界面"""
+        try:
+            # 使用更长的延迟，确保所有控件都完全创建
+            def delayed_apply():
+                try:
+                    # 再延迟一次，确保UI完全初始化
+                    def final_apply():
+                        try:
+                            print(f"应用设置: {self.current_settings}")
+                            
+                            # 应用屏幕类型
+                            if hasattr(self, 'screen_type_combo') and 'screen_type' in self.current_settings:
+                                self.screen_type_combo.blockSignals(True)  # 阻止信号
+                                self.screen_type_combo.setCurrentText(self.current_settings['screen_type'])
+                                self.screen_type_combo.blockSignals(False)
+                                print(f"设置屏幕类型: {self.current_settings['screen_type']}")
+                            
+                            # 应用颜色模式
+                            if hasattr(self, 'color_mode_combo') and 'color_mode' in self.current_settings:
+                                self.color_mode_combo.blockSignals(True)
+                                self.color_mode_combo.setCurrentText(self.current_settings['color_mode'])
+                                self.color_mode_combo.blockSignals(False)
+                                print(f"设置颜色模式: {self.current_settings['color_mode']}")
+                            
+                            # 应用字体大小
+                            if hasattr(self, 'font_size_combo') and 'font_size' in self.current_settings:
+                                self.font_size_combo.blockSignals(True)
+                                self.font_size_combo.setCurrentText(self.current_settings['font_size'])
+                                self.font_size_combo.blockSignals(False)
+                                print(f"设置字体大小: {self.current_settings['font_size']}")
+                            
+                            # 应用预览大小
+                            if hasattr(self, 'preview_size_combo') and 'preview_size' in self.current_settings:
+                                self.preview_size_combo.blockSignals(True)
+                                self.preview_size_combo.setCurrentText(self.current_settings['preview_size'])
+                                self.preview_size_combo.blockSignals(False)
+                                print(f"设置预览大小: {self.current_settings['preview_size']}")
+                            
+                            # 应用屏幕尺寸
+                            if hasattr(self, 'screen_width_edit') and 'screen_width' in self.current_settings:
+                                self.screen_width_edit.blockSignals(True)
+                                self.screen_width_edit.setText(self.current_settings['screen_width'])
+                                self.screen_width_edit.blockSignals(False)
+                            if hasattr(self, 'screen_height_edit') and 'screen_height' in self.current_settings:
+                                self.screen_height_edit.blockSignals(True)
+                                self.screen_height_edit.setText(self.current_settings['screen_height'])
+                                self.screen_height_edit.blockSignals(False)
+                            
+                            # 应用TFT颜色设置（如果是TFT模式）
+                            if hasattr(self, 'screen_type_combo') and self.screen_type_combo.currentText() == "128x128 TFT":
+                                if 'bg_color' in self.current_settings and hasattr(self, 'bg_color_hex'):
+                                    self.bg_color_hex.blockSignals(True)
+                                    self.bg_color_hex.setText(self.current_settings['bg_color'])
+                                    self.bg_color_hex.blockSignals(False)
+                                    print(f"设置背景颜色: {self.current_settings['bg_color']}")
+                                if 'font_color' in self.current_settings and hasattr(self, 'font_color_hex'):
+                                    self.font_color_hex.blockSignals(True)
+                                    self.font_color_hex.setText(self.current_settings['font_color'])
+                                    self.font_color_hex.blockSignals(False)
+                                    print(f"设置字体颜色: {self.current_settings['font_color']}")
+                                if 'selected_bg' in self.current_settings and hasattr(self, 'selected_bg_hex'):
+                                    self.selected_bg_hex.blockSignals(True)
+                                    self.selected_bg_hex.setText(self.current_settings['selected_bg'])
+                                    self.selected_bg_hex.blockSignals(False)
+                                    print(f"设置选中背景: {self.current_settings['selected_bg']}")
+                                if 'selected_font' in self.current_settings and hasattr(self, 'selected_font_hex'):
+                                    self.selected_font_hex.blockSignals(True)
+                                    self.selected_font_hex.setText(self.current_settings['selected_font'])
+                                    self.selected_font_hex.blockSignals(False)
+                                    print(f"设置选中字体: {self.current_settings['selected_font']}")
+                                    
+                                    # 更新按钮颜色
+                                    try:
+                                        from PySide6.QtGui import QColor
+                                        color = QColor(self.current_settings['selected_font'])
+                                        if color.isValid():
+                                            self.selected_font_btn.setStyleSheet(
+                                                f"background-color: {color.name()}; color: {'white' if color.lightness() < 128 else 'black'};"
+                                            )
+                                    except:
+                                        pass
+                            
+                            # 更新预览
+                            if hasattr(self, 'preview'):
+                                self.on_screen_config_changed()
+                                print("预览已更新")
+                            
+                            print("所有设置应用完成")
+                            
+                        except Exception as e:
+                            print(f"最终应用设置失败: {e}")
+                            import traceback
+                            traceback.print_exc()
+                    
+                    from PySide6.QtCore import QTimer
+                    QTimer.singleShot(200, final_apply)
+                        
+                except Exception as e:
+                    print(f"延迟应用设置失败: {e}")
+                    import traceback
+                    traceback.print_exc()
+            
+            # 使用QTimer延迟应用设置
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(100, delayed_apply)
+            
+        except Exception as e:
+            print(f"应用设置失败: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    def closeEvent(self, event):
+        """窗口关闭时保存设置"""
+        self.save_settings()
+        super().closeEvent(event)
         
     # ---------------- Tree操作 ----------------
     def refresh_tree(self):

@@ -1,0 +1,12 @@
+{
+  "screen_type": "128x128 TFT",
+  "color_mode": "256色",
+  "font_size": "中(12px)",
+  "preview_size": "放大2倍",
+  "bg_color": "#805C50",
+  "font_color": "#FFFFFF",
+  "selected_bg": "#62FF6C",
+  "selected_font": "#000000",
+  "screen_width": "128",
+  "screen_height": "128"
+}
