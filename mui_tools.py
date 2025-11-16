@@ -8,7 +8,7 @@ from PySide6.QtCore import Qt
 # ---------------- Menu 数据结构 ----------------
 class MenuItem:
     _id_counter = 1
-    def __init__(self, name="菜单项", is_exec=True, visible=True, parent=None):
+    def __init__(self, name="菜单项", is_exec=False, visible=True, parent=None):
         self.id = MenuItem._id_counter
         MenuItem._id_counter += 1
         self.name = name
@@ -486,9 +486,9 @@ class MenuPreview(QWidget):
                 painter.fillRect(0, y - line_h, self.fb_w, line_h, self.selected_bg_color)
                 painter.setPen(self.selected_fg_color)
                 
-                # 绘制选中项内容
-                prefix = "►" if "OLED" in self.screen_type else "▶"
-                suffix = " »" if not item.is_exec else ""
+                # 绘制选中项内容 - 简化符号，右侧不显示多余符号
+                prefix = ">" if "OLED" in self.screen_type else ">"
+                suffix = "" if not item.is_exec else ""  # 移除右侧多余符号
                 text = f"{prefix} {indent}{display_name}{suffix}"
                 # 使用更适合像素级显示的文本渲染方法
                 if "OLED" in self.screen_type:
@@ -504,7 +504,7 @@ class MenuPreview(QWidget):
                 # 绘制普通项
                 painter.setPen(self.fg_color)
                 prefix = "  "
-                suffix = " ▷" if not item.is_exec else "  "
+                suffix = ""  # 子菜单模式下右侧不显示额外符号
                 text = f"{prefix} {indent}{display_name}{suffix}"
                 # 使用更适合像素级显示的文本渲染方法
                 if "OLED" in self.screen_type:
@@ -563,7 +563,7 @@ class MenuPreview(QWidget):
                 type_text = "● 执行"
             else:
                 # 子菜单项显示子菜单图标
-                type_text = "▶ 子菜单"
+                type_text = "> 子菜单"
             
             # 添加位置信息到导航文本
             position_text = f"{self.cursor_index + 1}/{total}"
@@ -725,7 +725,7 @@ class MenuDesigner(QWidget):
         self.current_settings = {
             'font_size': '中(12px)',
             'color_mode': '单色',
-            'preview_size': '放大2倍',
+            'preview_size': '实际大小',
             'bg_color': '#004080',
             'font_color': '#FFFFFF',
             'selected_bg': '#FFFFFF',
@@ -740,20 +740,20 @@ class MenuDesigner(QWidget):
 
         # 根菜单
         self.menu_root = MenuItem("根菜单", is_exec=False)
-        self.menu_root.add_child(MenuItem("系统设置"))
-        self.menu_root.add_child(MenuItem("数据显示"))
-        self.menu_root.add_child(MenuItem("设备控制"))
-        self.menu_root.add_child(MenuItem("通信设置"))
-        self.menu_root.add_child(MenuItem("时间日期"))
-        self.menu_root.add_child(MenuItem("网络配置"))
-        self.menu_root.add_child(MenuItem("安全设置"))
-        self.menu_root.add_child(MenuItem("用户管理"))
-        self.menu_root.add_child(MenuItem("日志记录"))
-        self.menu_root.add_child(MenuItem("系统信息"))
-        self.menu_root.add_child(MenuItem("诊断工具"))
-        self.menu_root.add_child(MenuItem("固件更新"))
-        self.menu_root.add_child(MenuItem("备份恢复"))
-        self.menu_root.add_child(MenuItem("工厂重置"))
+        self.menu_root.add_child(MenuItem("系统设置", is_exec=False))
+        self.menu_root.add_child(MenuItem("数据显示", is_exec=False))
+        self.menu_root.add_child(MenuItem("设备控制", is_exec=False))
+        self.menu_root.add_child(MenuItem("通信设置", is_exec=False))
+        self.menu_root.add_child(MenuItem("时间日期", is_exec=False))
+        self.menu_root.add_child(MenuItem("网络配置", is_exec=False))
+        self.menu_root.add_child(MenuItem("安全设置", is_exec=False))
+        self.menu_root.add_child(MenuItem("用户管理", is_exec=False))
+        self.menu_root.add_child(MenuItem("日志记录", is_exec=False))
+        self.menu_root.add_child(MenuItem("系统信息", is_exec=False))
+        self.menu_root.add_child(MenuItem("诊断工具", is_exec=False))
+        self.menu_root.add_child(MenuItem("固件更新", is_exec=False))
+        self.menu_root.add_child(MenuItem("备份恢复", is_exec=False))
+        self.menu_root.add_child(MenuItem("工厂重置", is_exec=False))
         self.current_node = self.menu_root
 
         # 主布局
@@ -928,7 +928,7 @@ class MenuDesigner(QWidget):
         preview_size_layout.addWidget(QLabel("预览大小:"))
         self.preview_size_combo = QComboBox()
         self.preview_size_combo.addItems(["实际大小", "放大1.5倍", "放大2倍", "放大3倍"])
-        self.preview_size_combo.setCurrentText("放大2倍")
+        self.preview_size_combo.setCurrentText("实际大小")  # 设置默认为实际大小
         self.preview_size_combo.currentTextChanged.connect(self.on_preview_size_changed)
         preview_size_layout.addWidget(self.preview_size_combo)
         preview_size_layout.addStretch()
@@ -1396,10 +1396,15 @@ class MenuDesigner(QWidget):
 
     def add_menu(self):
         if self.current_node:
-            new_node = MenuItem("新菜单")
+            new_node = MenuItem("新菜单", is_exec=False)  # 默认创建子菜单，不是执行项
             self.current_node.add_child(new_node)
             self.refresh_tree()
+            # 自动选中新创建的子菜单项
+            self.current_node = new_node
             self.preview.render_menu()
+            # 更新属性面板
+            self.name_edit.setText(new_node.name)
+            self.callback_edit.setText(new_node.callback_name)
 
     def del_menu(self):
         if self.current_node and self.current_node.parent:
@@ -1426,13 +1431,24 @@ class MenuDesigner(QWidget):
                 if node.is_exec:
                     print(f"执行回调: {node.callback_name}")
                 elif node.children:
+                    # 进入子菜单：切换到子菜单根节点
                     self.preview.menu_root = node
-                    self.preview.cursor_index = node.cursor_pos
+                    self.preview.cursor_index = 0  # 重置到第一项
+                    print(f"进入子菜单: {node.name}")
         elif key=="Back":
             if self.preview.menu_root.parent:
+                # 返回上级菜单：保存当前位置并切换到父菜单
                 self.preview.menu_root.cursor_pos = self.preview.cursor_index
                 self.preview.menu_root = self.preview.menu_root.parent
-                self.preview.cursor_index = self.preview.menu_root.cursor_pos
+                # 找到当前节点在父菜单中的位置
+                parent_visible = [c for c in self.preview.menu_root.children if c.visible]
+                for i, child in enumerate(parent_visible):
+                    if child == self.preview.menu_root.children[0].parent:
+                        self.preview.cursor_index = i
+                        break
+                else:
+                    self.preview.cursor_index = 0
+                print(f"返回上级菜单: {self.preview.menu_root.name}")
         self.preview.render_menu()
 
     # ---------------- 导出完整 C 代码 ----------------
