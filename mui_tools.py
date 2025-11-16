@@ -793,9 +793,10 @@ class MenuDesigner(QWidget):
         prop_layout.addWidget(QLabel("菜单名称"))
         prop_layout.addWidget(self.name_edit)
 
-        self.is_exec_btn = QPushButton("切换执行/子菜单")
-        self.is_exec_btn.clicked.connect(self.toggle_exec)
-        prop_layout.addWidget(self.is_exec_btn)
+        # 移除切换执行/子菜单按钮，改为自动检测
+        # self.is_exec_btn = QPushButton("切换执行/子菜单")
+        # self.is_exec_btn.clicked.connect(self.toggle_exec)
+        # prop_layout.addWidget(self.is_exec_btn)
 
         self.callback_edit = QLineEdit()
         prop_layout.addWidget(QLabel("回调函数名 (执行菜单有效)"))
