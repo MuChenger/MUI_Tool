@@ -736,6 +736,9 @@ class MenuDesigner(QWidget):
         self.setWindowTitle("MCU 菜单设计器 - U8G2 完整版")
         self.resize(1200,700)
         
+        # 应用现代化样式表
+        self.apply_modern_style()
+        
         # 保存当前设置状态，避免切换时丢失
         self.current_settings = {
             'font_size': '中(12px)',
@@ -771,25 +774,33 @@ class MenuDesigner(QWidget):
         self.menu_root.add_child(MenuItem("工厂重置", is_exec=False))
         self.current_node = self.menu_root
 
-        # 主布局
+        # 主布局 - 增加间距和边距
         main_layout = QHBoxLayout(self)
+        main_layout.setSpacing(15)  # 增加控件间距
+        main_layout.setContentsMargins(15, 15, 15, 15)  # 增加边距
 
         # 左侧树控件
         left_widget = QWidget()
         left_layout = QVBoxLayout(left_widget)
+        left_layout.setSpacing(10)  # 增加内部间距
+        left_layout.setContentsMargins(0, 0, 0, 0)
         
         self.tree = QTreeWidget()
         self.tree.setHeaderLabel("菜单结构")
         self.tree.itemClicked.connect(self.on_tree_select)
+        self.tree.setMinimumHeight(300)  # 设置最小高度
         self.refresh_tree()
         left_layout.addWidget(self.tree)
 
         # 中间属性编辑
         prop_group = QGroupBox("菜单项属性")
         prop_layout = QVBoxLayout(prop_group)
+        prop_layout.setSpacing(8)  # 增加属性面板内部间距
+        prop_layout.setContentsMargins(12, 15, 12, 12)  # 增加边距
 
         self.name_edit = QLineEdit()
         self.name_edit.editingFinished.connect(self.update_name)
+        self.name_edit.setMinimumHeight(30)  # 增加输入框高度
         prop_layout.addWidget(QLabel("菜单名称"))
         prop_layout.addWidget(self.name_edit)
 
@@ -799,34 +810,119 @@ class MenuDesigner(QWidget):
         # prop_layout.addWidget(self.is_exec_btn)
 
         self.callback_edit = QLineEdit()
+        self.callback_edit.setMinimumHeight(30)  # 增加输入框高度
         prop_layout.addWidget(QLabel("回调函数名 (执行菜单有效)"))
         prop_layout.addWidget(self.callback_edit)
         self.callback_edit.editingFinished.connect(self.update_callback)
 
+        # 按钮布局 - 使用水平布局使按钮更紧凑
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(8)
+        
         self.add_btn = QPushButton("添加子菜单")
         self.add_btn.clicked.connect(self.add_menu)
-        prop_layout.addWidget(self.add_btn)
+        self.add_btn.setMinimumHeight(35)  # 增加按钮高度
+        button_layout.addWidget(self.add_btn)
 
         self.del_btn = QPushButton("删除菜单")
         self.del_btn.clicked.connect(self.del_menu)
-        prop_layout.addWidget(self.del_btn)
+        self.del_btn.setMinimumHeight(35)  # 增加按钮高度
+        button_layout.addWidget(self.del_btn)
+        
+        prop_layout.addLayout(button_layout)
 
         prop_layout.addWidget(QLabel(" "))
         self.export_btn = QPushButton("导出完整U8G2 C代码")
+        self.export_btn.setProperty("class", "primary")  # 设置为主要按钮样式
         self.export_btn.clicked.connect(self.export_code)
+        self.export_btn.setMinimumHeight(40)  # 增加导出按钮高度
         prop_layout.addWidget(self.export_btn)
         prop_layout.addStretch()
         
         left_layout.addWidget(prop_group)
         main_layout.addWidget(left_widget, 1)
 
-        # 右侧预览区域
+        # 导入选项卡控件
+        from PySide6.QtWidgets import QTabWidget
+        
+        # 右侧区域 - 使用选项卡组织
         right_widget = QWidget()
         right_layout = QVBoxLayout(right_widget)
+        right_layout.setSpacing(10)  # 减少间距
+        right_layout.setContentsMargins(0, 0, 0, 0)
         
-        # 屏幕配置组
-        screen_config_group = QGroupBox("屏幕配置")
-        screen_config_layout = QVBoxLayout(screen_config_group)
+        # 创建选项卡控件
+        self.tab_widget = QTabWidget()
+        self.tab_widget.setTabPosition(QTabWidget.North)  # 选项卡在上方
+        
+        # === 选项卡1: 菜单预览 ===
+        preview_tab = QWidget()
+        preview_tab_layout = QVBoxLayout(preview_tab)
+        preview_tab_layout.setSpacing(10)
+        preview_tab_layout.setContentsMargins(12, 12, 12, 12)
+        
+        # 菜单预览组
+        preview_group = QGroupBox("菜单预览")
+        preview_layout = QVBoxLayout(preview_group)
+        preview_layout.setSpacing(8)
+        preview_layout.setContentsMargins(12, 12, 12, 12)
+        
+        # 创建预览控件
+        self.preview = MenuPreview()
+        # 稍后设置预览控件，因为combo框还没创建
+        self.preview.setMinimumHeight(350)  # 增加预览最小高度
+        preview_layout.addWidget(self.preview, 1)
+        
+        # 按键模拟
+        keys_group = QGroupBox("按键模拟")
+        keys_layout = QVBoxLayout(keys_group)
+        keys_layout.setSpacing(8)
+        keys_layout.setContentsMargins(12, 12, 12, 12)
+        
+        # 主按键区域
+        main_key_layout = QHBoxLayout()
+        main_key_layout.setSpacing(10)
+        
+        # 四键模式：上、下、确认、返回
+        self.key_up_btn = QPushButton("↑ 上")
+        self.key_down_btn = QPushButton("↓ 下")
+        self.key_enter_btn = QPushButton("↵ 确认")
+        self.key_back_btn = QPushButton("← 返回")
+        
+        # 设置按键按钮样式
+        for btn in [self.key_up_btn, self.key_down_btn, self.key_enter_btn, self.key_back_btn]:
+            btn.setProperty("class", "key-btn")
+            btn.setMinimumHeight(40)
+            btn.setMinimumWidth(80)
+        
+        self.key_up_btn.clicked.connect(lambda: self.on_key("Up"))
+        self.key_down_btn.clicked.connect(lambda: self.on_key("Down"))
+        self.key_enter_btn.clicked.connect(lambda: self.on_key("Enter"))
+        self.key_back_btn.clicked.connect(lambda: self.on_key("Back"))
+        
+        main_key_layout.addWidget(self.key_up_btn)
+        main_key_layout.addWidget(self.key_down_btn)
+        main_key_layout.addWidget(self.key_enter_btn)
+        main_key_layout.addWidget(self.key_back_btn)
+        
+        keys_layout.addLayout(main_key_layout)
+        preview_tab_layout.addWidget(preview_group)
+        preview_tab_layout.addWidget(keys_group)
+        
+        # 添加预览选项卡
+        self.tab_widget.addTab(preview_tab, "🖼️ 预览")
+        
+        # === 选项卡2: 屏幕配置 ===
+        config_tab = QWidget()
+        config_tab_layout = QVBoxLayout(config_tab)
+        config_tab_layout.setSpacing(15)
+        config_tab_layout.setContentsMargins(20, 20, 20, 20)
+        
+        # 基本设置组
+        basic_group = QGroupBox("基本设置")
+        basic_layout = QVBoxLayout(basic_group)
+        basic_layout.setSpacing(10)
+        basic_layout.setContentsMargins(12, 12, 12, 12)
         
         # 屏幕类型选择
         screen_type_layout = QHBoxLayout()
@@ -841,16 +937,26 @@ class MenuDesigner(QWidget):
         screen_size_layout = QHBoxLayout()
         screen_size_layout.addWidget(QLabel("屏幕尺寸:"))
         self.screen_width_edit = QLineEdit("128")
-        self.screen_width_edit.setMaximumWidth(50)
+        self.screen_width_edit.setMaximumWidth(60)
         screen_size_layout.addWidget(self.screen_width_edit)
         screen_size_layout.addWidget(QLabel("×"))
         self.screen_height_edit = QLineEdit("128")
-        self.screen_height_edit.setMaximumWidth(50)
+        self.screen_height_edit.setMaximumWidth(60)
         screen_size_layout.addWidget(self.screen_height_edit)
-        self.apply_size_btn = QPushButton("应用尺寸")
+        self.apply_size_btn = QPushButton("应用")
         self.apply_size_btn.clicked.connect(self.on_apply_screen_size)
+        self.apply_size_btn.setMaximumWidth(60)
         screen_size_layout.addWidget(self.apply_size_btn)
         screen_size_layout.addStretch()
+        
+        basic_layout.addLayout(screen_type_layout)
+        basic_layout.addLayout(screen_size_layout)
+        
+        # 显示设置组
+        display_group = QGroupBox("显示设置")
+        display_layout = QVBoxLayout(display_group)
+        display_layout.setSpacing(10)
+        display_layout.setContentsMargins(12, 12, 12, 12)
         
         # 颜色模式选择
         color_mode_layout = QHBoxLayout()
@@ -861,113 +967,127 @@ class MenuDesigner(QWidget):
         color_mode_layout.addWidget(self.color_mode_combo)
         color_mode_layout.addStretch()
         
-        # 背景颜色选择（仅TFT模式）- 支持颜色选择器
-        bg_color_layout = QHBoxLayout()
-        bg_color_layout.addWidget(QLabel("背景颜色:"))
-        self.bg_color_btn = QPushButton()
-        self.bg_color_btn.setText("选择颜色")
-        self.bg_color_btn.setStyleSheet("background-color: rgb(0, 64, 128); color: white;")
-        self.bg_color_btn.clicked.connect(lambda: self.choose_color('bg'))
-        self.bg_color_btn.setMaximumWidth(80)
-        bg_color_layout.addWidget(self.bg_color_btn)
-        
-        self.bg_color_hex = QLineEdit("#004080")
-        self.bg_color_hex.setMaximumWidth(60)
-        self.bg_color_hex.textChanged.connect(self.on_hex_color_changed)
-        bg_color_layout.addWidget(QLabel("HEX:"))
-        bg_color_layout.addWidget(self.bg_color_hex)
-        bg_color_layout.addStretch()
-        
-        # 字体颜色选择（仅TFT模式）- 支持颜色选择器
-        font_color_layout = QHBoxLayout()
-        font_color_layout.addWidget(QLabel("字体颜色:"))
-        self.font_color_btn = QPushButton()
-        self.font_color_btn.setText("选择颜色")
-        self.font_color_btn.setStyleSheet("background-color: rgb(255, 255, 255); color: black;")
-        self.font_color_btn.clicked.connect(lambda: self.choose_color('font'))
-        self.font_color_btn.setMaximumWidth(80)
-        font_color_layout.addWidget(self.font_color_btn)
-        
-        self.font_color_hex = QLineEdit("#FFFFFF")
-        self.font_color_hex.setMaximumWidth(60)
-        self.font_color_hex.textChanged.connect(self.on_hex_color_changed)
-        font_color_layout.addWidget(QLabel("HEX:"))
-        font_color_layout.addWidget(self.font_color_hex)
-        font_color_layout.addStretch()
-        
-        # 选中项背景颜色（仅TFT模式）- 支持颜色选择器
-        selected_bg_layout = QHBoxLayout()
-        selected_bg_layout.addWidget(QLabel("选中背景:"))
-        self.selected_bg_btn = QPushButton()
-        self.selected_bg_btn.setText("选择颜色")
-        self.selected_bg_btn.setStyleSheet("background-color: rgb(255, 255, 255); color: black;")
-        self.selected_bg_btn.clicked.connect(lambda: self.choose_color('selected_bg'))
-        self.selected_bg_btn.setMaximumWidth(80)
-        selected_bg_layout.addWidget(self.selected_bg_btn)
-        
-        self.selected_bg_hex = QLineEdit("#FFFFFF")
-        self.selected_bg_hex.setMaximumWidth(60)
-        self.selected_bg_hex.textChanged.connect(self.on_hex_color_changed)
-        selected_bg_layout.addWidget(QLabel("HEX:"))
-        selected_bg_layout.addWidget(self.selected_bg_hex)
-        selected_bg_layout.addStretch()
-        
-        # 选中项字体颜色（仅TFT模式）- 支持颜色选择器
-        selected_font_layout = QHBoxLayout()
-        selected_font_layout.addWidget(QLabel("选中字体:"))
-        self.selected_font_btn = QPushButton()
-        self.selected_font_btn.setText("选择颜色")
-        self.selected_font_btn.setStyleSheet("background-color: rgb(0, 0, 0); color: white;")
-        self.selected_font_btn.clicked.connect(lambda: self.choose_color('selected_font'))
-        self.selected_font_btn.setMaximumWidth(80)
-        selected_font_layout.addWidget(self.selected_font_btn)
-        
-        self.selected_font_hex = QLineEdit("#000000")
-        self.selected_font_hex.setMaximumWidth(60)
-        self.selected_font_hex.textChanged.connect(self.on_hex_color_changed)
-        selected_font_layout.addWidget(QLabel("HEX:"))
-        selected_font_layout.addWidget(self.selected_font_hex)
-        selected_font_layout.addStretch()
-        
         # 字体大小选择
         font_size_layout = QHBoxLayout()
         font_size_layout.addWidget(QLabel("字体大小:"))
         self.font_size_combo = QComboBox()
         self.font_size_combo.addItems(["小(8px)", "中(12px)", "大(16px)"])
-        self.font_size_combo.setCurrentText("中(12px)")  # 设置默认为12px
+        self.font_size_combo.setCurrentText("中(12px)")
         self.font_size_combo.currentTextChanged.connect(self.on_screen_config_changed)
         font_size_layout.addWidget(self.font_size_combo)
         font_size_layout.addStretch()
         
         # 预览窗口大小设置
         preview_size_layout = QHBoxLayout()
-        preview_size_layout.addWidget(QLabel("预览大小:"))
+        preview_size_layout.addWidget(QLabel("预览缩放:"))
         self.preview_size_combo = QComboBox()
         self.preview_size_combo.addItems(["实际大小", "放大1.5倍", "放大2倍", "放大3倍"])
-        self.preview_size_combo.setCurrentText("实际大小")  # 设置默认为实际大小
+        self.preview_size_combo.setCurrentText("实际大小")
         self.preview_size_combo.currentTextChanged.connect(self.on_preview_size_changed)
         preview_size_layout.addWidget(self.preview_size_combo)
         preview_size_layout.addStretch()
         
-        screen_config_layout.addLayout(screen_type_layout)
-        screen_config_layout.addLayout(screen_size_layout)
-        screen_config_layout.addLayout(color_mode_layout)
-        screen_config_layout.addLayout(bg_color_layout)
-        screen_config_layout.addLayout(font_color_layout)
-        screen_config_layout.addLayout(selected_bg_layout)
-        screen_config_layout.addLayout(selected_font_layout)
-        screen_config_layout.addLayout(font_size_layout)
-        screen_config_layout.addLayout(preview_size_layout)
-        right_layout.addWidget(screen_config_group)
-
-        # 菜单预览组
-        preview_group = QGroupBox("菜单预览")
-        preview_layout = QVBoxLayout()
-        preview_group.setLayout(preview_layout)
+        display_layout.addLayout(color_mode_layout)
+        display_layout.addLayout(font_size_layout)
+        display_layout.addLayout(preview_size_layout)
         
-        # 创建预览控件
-        self.preview = MenuPreview()
-        self.preview.preview_size_combo = self.preview_size_combo  # 传递预览大小控件
+        # 颜色配置组（仅TFT模式）
+        color_group = QGroupBox("颜色配置 (TFT模式)")
+        color_layout = QVBoxLayout(color_group)
+        color_layout.setSpacing(10)
+        color_layout.setContentsMargins(12, 12, 12, 12)
+        
+        # 背景颜色选择
+        bg_color_layout = QHBoxLayout()
+        bg_color_layout.addWidget(QLabel("背景颜色:"))
+        self.bg_color_btn = QPushButton()
+        self.bg_color_btn.setText("选择颜色")
+        self.bg_color_btn.setStyleSheet("background-color: rgb(0, 64, 128); color: white;")
+        self.bg_color_btn.setProperty("class", "color-btn")
+        self.bg_color_btn.clicked.connect(lambda: self.choose_color('bg'))
+        self.bg_color_btn.setMaximumWidth(90)
+        bg_color_layout.addWidget(self.bg_color_btn)
+        
+        self.bg_color_hex = QLineEdit("#004080")
+        self.bg_color_hex.setMaximumWidth(70)
+        self.bg_color_hex.textChanged.connect(self.on_hex_color_changed)
+        bg_color_layout.addWidget(QLabel("HEX:"))
+        bg_color_layout.addWidget(self.bg_color_hex)
+        bg_color_layout.addStretch()
+        
+        # 字体颜色选择
+        font_color_layout = QHBoxLayout()
+        font_color_layout.addWidget(QLabel("字体颜色:"))
+        self.font_color_btn = QPushButton()
+        self.font_color_btn.setText("选择颜色")
+        self.font_color_btn.setStyleSheet("background-color: rgb(255, 255, 255); color: black;")
+        self.font_color_btn.setProperty("class", "color-btn")
+        self.font_color_btn.clicked.connect(lambda: self.choose_color('font'))
+        self.font_color_btn.setMaximumWidth(90)
+        font_color_layout.addWidget(self.font_color_btn)
+        
+        self.font_color_hex = QLineEdit("#FFFFFF")
+        self.font_color_hex.setMaximumWidth(70)
+        self.font_color_hex.textChanged.connect(self.on_hex_color_changed)
+        font_color_layout.addWidget(QLabel("HEX:"))
+        font_color_layout.addWidget(self.font_color_hex)
+        font_color_layout.addStretch()
+        
+        # 选中项背景颜色
+        selected_bg_layout = QHBoxLayout()
+        selected_bg_layout.addWidget(QLabel("选中背景:"))
+        self.selected_bg_btn = QPushButton()
+        self.selected_bg_btn.setText("选择颜色")
+        self.selected_bg_btn.setStyleSheet("background-color: rgb(255, 255, 255); color: black;")
+        self.selected_bg_btn.setProperty("class", "color-btn")
+        self.selected_bg_btn.clicked.connect(lambda: self.choose_color('selected_bg'))
+        self.selected_bg_btn.setMaximumWidth(90)
+        selected_bg_layout.addWidget(self.selected_bg_btn)
+        
+        self.selected_bg_hex = QLineEdit("#FFFFFF")
+        self.selected_bg_hex.setMaximumWidth(70)
+        self.selected_bg_hex.textChanged.connect(self.on_hex_color_changed)
+        selected_bg_layout.addWidget(QLabel("HEX:"))
+        selected_bg_layout.addWidget(self.selected_bg_hex)
+        selected_bg_layout.addStretch()
+        
+        # 选中项字体颜色
+        selected_font_layout = QHBoxLayout()
+        selected_font_layout.addWidget(QLabel("选中字体:"))
+        self.selected_font_btn = QPushButton()
+        self.selected_font_btn.setText("选择颜色")
+        self.selected_font_btn.setStyleSheet("background-color: rgb(0, 0, 0); color: white;")
+        self.selected_font_btn.setProperty("class", "color-btn")
+        self.selected_font_btn.clicked.connect(lambda: self.choose_color('selected_font'))
+        self.selected_font_btn.setMaximumWidth(90)
+        selected_font_layout.addWidget(self.selected_font_btn)
+        
+        self.selected_font_hex = QLineEdit("#000000")
+        self.selected_font_hex.setMaximumWidth(70)
+        self.selected_font_hex.textChanged.connect(self.on_hex_color_changed)
+        selected_font_layout.addWidget(QLabel("HEX:"))
+        selected_font_layout.addWidget(self.selected_font_hex)
+        selected_font_layout.addStretch()
+        
+        color_layout.addLayout(bg_color_layout)
+        color_layout.addLayout(font_color_layout)
+        color_layout.addLayout(selected_bg_layout)
+        color_layout.addLayout(selected_font_layout)
+        
+        # 添加到配置选项卡
+        config_tab_layout.addWidget(basic_group)
+        config_tab_layout.addWidget(display_group)
+        config_tab_layout.addWidget(color_group)
+        config_tab_layout.addStretch()
+        
+        # 添加配置选项卡
+        self.tab_widget.addTab(config_tab, "⚙️ 配置")
+        
+        # 添加选项卡控件到右侧布局
+        right_layout.addWidget(self.tab_widget)
+        
+        # 现在设置预览控件的相关属性
+        self.preview.preview_size_combo = self.preview_size_combo
         self.preview.set_screen_type(
             self.screen_type_combo.currentText(),
             self.color_mode_combo.currentText(),
@@ -975,36 +1095,15 @@ class MenuDesigner(QWidget):
         )
         self.preview.menu_root = self.menu_root
         self.preview.render_menu()
-        preview_layout.addWidget(self.preview, 1)
         
-        # 按键模拟
-        keys_group = QGroupBox("按键模拟")
-        keys_layout = QVBoxLayout(keys_group)
-        
-        # 主按键区域
-        main_key_layout = QHBoxLayout()
-        
-        # 四键模式：上、下、确认、返回
-        self.key_up_btn = QPushButton("↑ 上")
-        self.key_down_btn = QPushButton("↓ 下")
-        self.key_enter_btn = QPushButton("↵ 确认")
-        self.key_back_btn = QPushButton("← 返回")
-        
-        self.key_up_btn.clicked.connect(lambda: self.on_key("Up"))
-        self.key_down_btn.clicked.connect(lambda: self.on_key("Down"))
-        self.key_enter_btn.clicked.connect(lambda: self.on_key("Enter"))
-        self.key_back_btn.clicked.connect(lambda: self.on_key("Back"))
-        
-        main_key_layout.addWidget(self.key_up_btn)
-        main_key_layout.addWidget(self.key_down_btn)
-        main_key_layout.addWidget(self.key_enter_btn)
-        main_key_layout.addWidget(self.key_back_btn)
-        
-        keys_layout.addLayout(main_key_layout)
-        preview_layout.addWidget(keys_group)
-        
-        right_layout.addWidget(preview_group)
         main_layout.addWidget(right_widget, 1)
+        
+        # 连接选项卡切换信号，用于动态显示/隐藏颜色配置
+        self.tab_widget.currentChanged.connect(self.on_tab_changed)
+        
+        # 初始状态：如果不是TFT模式，隐藏颜色配置
+        if "OLED" in self.screen_type_combo.currentText():
+            self.toggle_color_config(False)
 
     # ---------------- 配置处理方法 ----------------
     def on_screen_type_changed(self):
@@ -1137,6 +1236,22 @@ class MenuDesigner(QWidget):
             # 处理无效输入
             self.screen_width_edit.setText(str(self.preview.fb_w))
             self.screen_height_edit.setText(str(self.preview.fb_h))
+    
+    def on_tab_changed(self, index):
+        """选项卡切换时的处理"""
+        pass  # 可以在这里添加选项卡切换时的特殊处理
+    
+    def toggle_color_config(self, show):
+        """显示或隐藏颜色配置组"""
+        # 查找颜色配置组
+        if hasattr(self, 'tab_widget'):
+            config_tab = self.tab_widget.widget(1)  # 第二个选项卡是配置
+            if config_tab:
+                # 查找颜色配置组
+                for child in config_tab.findChildren(QGroupBox):
+                    if child.title() == "颜色配置 (TFT模式)":
+                        child.setVisible(show)
+                        break
     
     # ---------------- 颜色选择器方法 ----------------
     def choose_color(self, color_type):
@@ -1522,6 +1637,578 @@ class MenuDesigner(QWidget):
                     self.preview.cursor_index = 0
                 print(f"返回上级菜单: {self.preview.menu_root.name}")
         self.preview.render_menu()
+
+    def apply_modern_style(self):
+        """应用现代化样式表"""
+        modern_style = """
+        /* 现代化样式表 - 增强版深色主题 */
+        QWidget {
+            background-color: #1e1e1e;
+            color: #e0e0e0;
+            font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", "Helvetica Neue", sans-serif;
+            font-size: 9pt;
+        }
+        
+        QMainWindow, QDialog {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #1e1e1e, stop:1 #252525);
+            border: 1px solid #404040;
+        }
+        
+        /* 按钮样式 - 现代化设计 */
+        QPushButton {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #3a3a3a, stop:1 #2d2d2d);
+            color: #ffffff;
+            border: 1px solid #555555;
+            border-radius: 6px;
+            padding: 8px 16px;
+            font-weight: 500;
+            font-size: 9pt;
+            min-height: 20px;
+        }
+        
+        QPushButton:hover {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #4a4a4a, stop:1 #3d3d3d);
+            border-color: #0078d4;
+        }
+        
+        QPushButton:pressed {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #2a2a2a, stop:1 #1d1d1d);
+            border-color: #005a9e;
+        }
+        
+        QPushButton:disabled {
+            background-color: #2a2a2a;
+            color: #666666;
+            border-color: #404040;
+        }
+        
+        /* 主要操作按钮样式 */
+        QPushButton[class="primary"] {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #0078d4, stop:1 #005a9e);
+            border-color: #0078d4;
+            font-weight: 600;
+        }
+        
+        QPushButton[class="primary"]:hover {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #106ebe, stop:1 #004578);
+        }
+        
+        /* 输入框样式 */
+        QLineEdit, QTextEdit, QPlainTextEdit {
+            background-color: #2d2d2d;
+            color: #e0e0e0;
+            border: 2px solid #404040;
+            border-radius: 6px;
+            padding: 6px 12px;
+            selection-background-color: #0078d4;
+            font-size: 9pt;
+        }
+        
+        QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus {
+            border-color: #0078d4;
+            background-color: #333333;
+        }
+        
+        /* 下拉框样式 */
+        QComboBox {
+            background-color: #2d2d2d;
+            color: #e0e0e0;
+            border: 2px solid #404040;
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 9pt;
+            min-height: 20px;
+        }
+        
+        QComboBox:hover {
+            border-color: #555555;
+        }
+        
+        QComboBox:focus {
+            border-color: #0078d4;
+        }
+        
+        QComboBox::drop-down {
+            border: none;
+            width: 24px;
+            background: transparent;
+        }
+        
+        QComboBox::down-arrow {
+            image: none;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-top: 4px solid #e0e0e0;
+            width: 0;
+            height: 0;
+        }
+        
+        QComboBox QAbstractItemView {
+            background-color: #2d2d2d;
+            color: #e0e0e0;
+            border: 2px solid #404040;
+            border-radius: 6px;
+            selection-background-color: #0078d4;
+            selection-color: #ffffff;
+            padding: 4px;
+        }
+        
+        QComboBox QAbstractItemView::item {
+            padding: 6px 12px;
+            border-radius: 4px;
+            margin: 2px;
+        }
+        
+        QComboBox QAbstractItemView::item:selected {
+            background-color: #0078d4;
+            color: #ffffff;
+        }
+        
+        QComboBox QAbstractItemView::item:hover {
+            background-color: #404040;
+        }
+        
+        /* 树控件样式 - 增强版 */
+        QTreeWidget {
+            background-color: #252525;
+            color: #ffffff;
+            border: 2px solid #0078d4;
+            border-radius: 8px;
+            alternate-background-color: #2a2a2a;
+            font-size: 10pt;
+            font-weight: 500;
+            gridline-color: #404040;
+            outline: none;
+            selection-background-color: transparent;
+        }
+        
+        QTreeWidget::header {
+            background-color: #1e3a5f;
+            color: #ffffff;
+            border: none;
+            border-bottom: 2px solid #0078d4;
+            border-top-left-radius: 6px;
+            border-top-right-radius: 6px;
+            padding: 8px 12px;
+            font-size: 11pt;
+            font-weight: 600;
+            min-height: 32px;
+        }
+        
+        QTreeWidget::item {
+            padding: 8px 12px;
+            border: none;
+            min-height: 28px;
+            border-bottom: 1px solid #333333;
+            margin: 0px;
+        }
+        
+        QTreeWidget::item:selected {
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                stop:0 #0078d4, stop:0.5 #0099ff, stop:1 #0078d4);
+            color: #ffffff;
+            border-radius: 4px;
+            border: 1px solid #005a9e;
+            font-weight: 600;
+        }
+        
+        QTreeWidget::item:hover:selected {
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                stop:0 #106ebe, stop:0.5 #1aa0ff, stop:1 #106ebe);
+            border-color: #0078d4;
+        }
+        
+        QTreeWidget::item:hover:!selected {
+            background-color: #404040;
+            color: #ffffff;
+            border-radius: 4px;
+            border: 1px solid #555555;
+        }
+        
+        QTreeWidget::branch {
+            background: transparent;
+            border: none;
+        }
+        
+        QTreeWidget::branch:has-children:!has-siblings:closed,
+        QTreeWidget::branch:closed:has-children:has-siblings {
+            image: none;
+            border: 2px solid #0078d4;
+            border-radius: 2px;
+            width: 12px;
+            height: 12px;
+            background-color: #2d2d2d;
+        }
+        
+        QTreeWidget::branch:has-children:!has-siblings:open,
+        QTreeWidget::branch:open:has-children:has-siblings {
+            image: none;
+            border: 2px solid #0078d4;
+            border-radius: 2px;
+            width: 12px;
+            height: 12px;
+            background-color: #0078d4;
+        }
+        
+        QTreeWidget::branch:has-children:has-siblings:closed,
+        QTreeWidget::branch:has-siblings:closed {
+            image: none;
+            border: 2px solid #0078d4;
+            border-radius: 2px;
+            width: 12px;
+            height: 12px;
+            background-color: #2d2d2d;
+        }
+        
+        QTreeWidget::branch:has-children:has-siblings:open,
+        QTreeWidget::branch:has-siblings:open {
+            image: none;
+            border: 2px solid #0078d4;
+            border-radius: 2px;
+            width: 12px;
+            height: 12px;
+            background-color: #0078d4;
+        }
+        
+        QTreeWidget::branch:has-children:!has-siblings:closed:hover,
+        QTreeWidget::branch:closed:has-children:has-siblings:hover,
+        QTreeWidget::branch:has-children:has-siblings:closed:hover,
+        QTreeWidget::branch:has-siblings:closed:hover {
+            border-color: #0099ff;
+            background-color: #404040;
+        }
+        
+        QTreeWidget::branch:has-children:!has-siblings:open:hover,
+        QTreeWidget::branch:open:has-children:has-siblings:hover,
+        QTreeWidget::branch:has-children:has-siblings:open:hover,
+        QTreeWidget::branch:has-siblings:open:hover {
+            border-color: #0099ff;
+        }
+        
+        QTreeWidget::indicator {
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            border: 2px solid #0078d4;
+            background-color: #2d2d2d;
+            margin: 2px;
+        }
+        
+        QTreeWidget::indicator:hover {
+            border-color: #0099ff;
+            background-color: #404040;
+        }
+        
+        QTreeWidget::indicator:checked {
+            background-color: #0078d4;
+            border-color: #0078d4;
+            image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iMTIiIHZpZXdCb3g9IjAgMCAxMiAxMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEgNkw1IDEwTDExIDIiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=);
+        }
+        
+        QTreeWidget::indicator:checked:hover {
+            background-color: #0099ff;
+            border-color: #0099ff;
+        }
+        
+        /* 分组框样式 */
+        QGroupBox {
+            background-color: #252525;
+            color: #e0e0e0;
+            border: 2px solid #404040;
+            border-radius: 8px;
+            margin-top: 12px;
+            padding-top: 16px;
+            font-weight: 600;
+            font-size: 10pt;
+        }
+        
+        QGroupBox::title {
+            subcontrol-origin: margin;
+            subcontrol-position: top left;
+            padding: 4px 12px;
+            background-color: #252525;
+            border-radius: 4px;
+            left: 12px;
+        }
+        
+        /* 标签样式 */
+        QLabel {
+            color: #e0e0e0;
+            background: transparent;
+            font-size: 9pt;
+            font-weight: 500;
+        }
+        
+        QLabel[class="heading"] {
+            font-size: 11pt;
+            font-weight: 600;
+            color: #0078d4;
+            margin: 8px 0;
+        }
+        
+        QLabel[class="description"] {
+            color: #a0a0a0;
+            font-size: 8pt;
+            font-style: italic;
+        }
+        
+        /* 滚动条样式 */
+        QScrollBar:vertical {
+            background-color: #2d2d2d;
+            width: 14px;
+            margin: 0px;
+            border-radius: 7px;
+        }
+        
+        QScrollBar::handle:vertical {
+            background-color: #555555;
+            border-radius: 7px;
+            min-height: 30px;
+            border: none;
+        }
+        
+        QScrollBar::handle:vertical:hover {
+            background-color: #666666;
+        }
+        
+        QScrollBar::handle:vertical:pressed {
+            background-color: #0078d4;
+        }
+        
+        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+            border: none;
+            background: none;
+            height: 0px;
+        }
+        
+        QScrollBar:horizontal {
+            background-color: #2d2d2d;
+            height: 14px;
+            margin: 0px;
+            border-radius: 7px;
+        }
+        
+        QScrollBar::handle:horizontal {
+            background-color: #555555;
+            border-radius: 7px;
+            min-width: 30px;
+            border: none;
+        }
+        
+        QScrollBar::handle:horizontal:hover {
+            background-color: #666666;
+        }
+        
+        QScrollBar::handle:horizontal:pressed {
+            background-color: #0078d4;
+        }
+        
+        QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+            border: none;
+            background: none;
+            width: 0px;
+        }
+        
+        /* 工具提示样式 */
+        QToolTip {
+            background-color: #333333;
+            color: #e0e0e0;
+            border: 1px solid #555555;
+            border-radius: 4px;
+            padding: 6px 10px;
+            font-size: 8pt;
+        }
+        
+        /* 菜单样式 */
+        QMenuBar {
+            background-color: #2d2d2d;
+            color: #e0e0e0;
+            border-bottom: 2px solid #404040;
+        }
+        
+        QMenuBar::item {
+            padding: 6px 12px;
+            background: transparent;
+            border-radius: 4px;
+        }
+        
+        QMenuBar::item:selected {
+            background-color: #0078d4;
+        }
+        
+        QMenu {
+            background-color: #2d2d2d;
+            color: #e0e0e0;
+            border: 2px solid #404040;
+            border-radius: 6px;
+            padding: 4px;
+        }
+        
+        QMenu::item {
+            padding: 6px 20px;
+            border-radius: 4px;
+        }
+        
+        QMenu::item:selected {
+            background-color: #0078d4;
+            color: #ffffff;
+        }
+        
+        QMenu::separator {
+            height: 1px;
+            background-color: #404040;
+            margin: 4px 12px;
+        }
+        
+        /* 状态栏样式 */
+        QStatusBar {
+            background-color: #2d2d2d;
+            color: #a0a0a0;
+            border-top: 1px solid #404040;
+        }
+        
+        /* 进度条样式 */
+        QProgressBar {
+            background-color: #404040;
+            border: 2px solid #555555;
+            border-radius: 6px;
+            text-align: center;
+            color: #ffffff;
+            font-weight: 500;
+        }
+        
+        QProgressBar::chunk {
+            background-color: #0078d4;
+            border-radius: 4px;
+        }
+        
+        /* 选项卡样式 */
+        QTabWidget::pane {
+            border: 2px solid #404040;
+            background-color: #1e1e1e;
+            border-radius: 6px;
+        }
+        
+        QTabBar::tab {
+            background-color: #2d2d2d;
+            color: #a0a0a0;
+            padding: 8px 16px;
+            border: none;
+            border-bottom: 3px solid transparent;
+            margin-right: 2px;
+            font-weight: 500;
+        }
+        
+        QTabBar::tab:selected {
+            background-color: #1e1e1e;
+            border-bottom: 3px solid #0078d4;
+            color: #e0e0e0;
+        }
+        
+        QTabBar::tab:hover:!selected {
+            background-color: #3a3a3a;
+            color: #e0e0e0;
+        }
+        
+        /* 复选框样式 */
+        QCheckBox {
+            color: #e0e0e0;
+            font-size: 9pt;
+            spacing: 8px;
+        }
+        
+        QCheckBox::indicator {
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            border: 2px solid #555555;
+            background-color: #2d2d2d;
+        }
+        
+        QCheckBox::indicator:checked {
+            background-color: #0078d4;
+            border-color: #0078d4;
+        }
+        
+        QCheckBox::indicator:hover {
+            border-color: #0078d4;
+        }
+        
+        /* 单选按钮样式 */
+        QRadioButton {
+            color: #e0e0e0;
+            font-size: 9pt;
+            spacing: 8px;
+        }
+        
+        QRadioButton::indicator {
+            width: 18px;
+            height: 18px;
+            border-radius: 9px;
+            border: 2px solid #555555;
+            background-color: #2d2d2d;
+        }
+        
+        QRadioButton::indicator:checked {
+            background-color: #0078d4;
+            border-color: #0078d4;
+        }
+        
+        QRadioButton::indicator:checked::after {
+            content: "";
+            width: 6px;
+            height: 6px;
+            border-radius: 3px;
+            background-color: white;
+            position: absolute;
+            top: 6px;
+            left: 6px;
+        }
+        
+        QRadioButton::indicator:hover {
+            border-color: #0078d4;
+        }
+        
+        /* 颜色选择按钮特殊样式 */
+        QPushButton[class="color-btn"] {
+            min-width: 80px;
+            max-width: 80px;
+            padding: 4px;
+            border-radius: 4px;
+            font-size: 8pt;
+        }
+        
+        /* 按键按钮样式 */
+        QPushButton[class="key-btn"] {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #4a4a4a, stop:1 #3d3d3d);
+            border: 2px solid #606060;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 10pt;
+            min-width: 60px;
+            min-height: 35px;
+        }
+        
+        QPushButton[class="key-btn"]:hover {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #5a5a5a, stop:1 #4d4d4d);
+            border-color: #0078d4;
+        }
+        
+        QPushButton[class="key-btn"]:pressed {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #3a3a3a, stop:1 #2d2d2d);
+        }
+        """
+        
+        self.setStyleSheet(modern_style)
 
     # ---------------- 导出完整 C 代码 ----------------
     def export_code(self):

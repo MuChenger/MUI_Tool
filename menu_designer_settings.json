@@ -3,18 +3,18 @@
   "color_mode": "16色",
   "font_size": "中(12px)",
   "preview_size": "实际大小",
-  "bg_color": "#004080",
+  "bg_color": "#1E8045",
   "font_color": "#FFFFFF",
   "selected_bg": "#FFFFFF",
   "selected_font": "#000000",
-  "screen_width": "128",
-  "screen_height": "128",
+  "screen_width": "480",
+  "screen_height": "272",
   "menu_data": {
     "name": "根菜单",
     "is_exec": false,
     "visible": true,
     "callback_name": "",
-    "cursor_pos": 6,
+    "cursor_pos": 13,
     "children": [
       {
         "name": "系统设置",
@@ -39,6 +39,14 @@
                 "children": []
               }
             ]
+          },
+          {
+            "name": "新菜单",
+            "is_exec": true,
+            "visible": true,
+            "callback_name": "",
+            "cursor_pos": 0,
+            "children": []
           }
         ]
       },
