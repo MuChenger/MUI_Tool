@@ -48,11 +48,11 @@ class MenuPreview(QWidget):
         self.screen_type = "OLED"  # 默认屏幕类型
         self.color_mode = "单色"   # 默认颜色模式
         
-        # 设置默认颜色
-        self.bg_color = Qt.black
-        self.fg_color = QColor(0, 255, 0)  # OLED绿色
-        self.selected_bg_color = QColor(0, 255, 0)
-        self.selected_fg_color = Qt.black
+        # 设置默认颜色 - OLED模式使用蓝底黄色
+        self.bg_color = QColor(0, 0, 128)  # 蓝色背景
+        self.fg_color = QColor(255, 255, 0)  # 黄色字体
+        self.selected_bg_color = QColor(255, 255, 0)  # 黄色选中背景
+        self.selected_fg_color = QColor(0, 0, 128)  # 蓝色选中字体
         
         # 创建framebuffer，使用更高质量的图像格式
         self.framebuffer = QPixmap(self.fb_w, self.fb_h)
@@ -111,10 +111,12 @@ class MenuPreview(QWidget):
             # OLED类型：使用当前framebuffer尺寸
             self.base_font_px = 8
             self.max_lines = 16
-            self.bg_color = Qt.black
-            self.fg_color = QColor(0, 255, 0)  # OLED绿色
-            self.selected_bg_color = QColor(0, 255, 0)
-            self.selected_fg_color = Qt.black
+            
+            # OLED模式：使用固定的蓝底黄色字体
+            self.bg_color = QColor(0, 0, 128)  # 蓝色背景
+            self.fg_color = QColor(255, 255, 0)  # 黄色字体
+            self.selected_bg_color = QColor(255, 255, 0)  # 黄色选中背景
+            self.selected_fg_color = QColor(0, 0, 128)  # 蓝色选中字体
         elif screen_type == "TFT":
             # TFT类型：使用当前framebuffer尺寸
             self.base_font_px = 12
@@ -239,10 +241,11 @@ class MenuPreview(QWidget):
             # 默认OLED类型：使用当前framebuffer尺寸
             self.base_font_px = 8
             self.max_lines = 16
-            self.bg_color = Qt.black
-            self.fg_color = QColor(0, 255, 0)  # OLED绿色
-            self.selected_bg_color = QColor(0, 255, 0)
-            self.selected_fg_color = Qt.black
+            # 使用固定的蓝底黄色字体
+            self.bg_color = QColor(0, 0, 128)  # 蓝色背景
+            self.fg_color = QColor(255, 255, 0)  # 黄色字体
+            self.selected_bg_color = QColor(255, 255, 0)  # 黄色选中背景
+            self.selected_fg_color = QColor(0, 0, 128)  # 蓝色选中字体
         
         # 调整字体大小
         if "8px" in font_size:
@@ -1153,8 +1156,8 @@ class MenuDesigner(QWidget):
         display_layout.addLayout(preview_size_layout)
         
         # 颜色配置组（仅TFT模式）
-        color_group = QGroupBox("颜色配置 (TFT模式)")
-        color_layout = QVBoxLayout(color_group)
+        self.color_group = QGroupBox("颜色配置 (TFT模式)")
+        color_layout = QVBoxLayout(self.color_group)
         color_layout.setSpacing(8)
         color_layout.setContentsMargins(10, 10, 10, 10)
         
@@ -1238,7 +1241,7 @@ class MenuDesigner(QWidget):
         # 添加到配置选项卡
         config_tab_layout.addWidget(basic_group)
         config_tab_layout.addWidget(display_group)
-        config_tab_layout.addWidget(color_group)
+        config_tab_layout.addWidget(self.color_group)
         config_tab_layout.addStretch()
         
         # 添加配置选项卡
@@ -1262,12 +1265,12 @@ class MenuDesigner(QWidget):
         self.preview.menu_root = self.menu_root
         self.preview.render_menu()
         
-        # 连接选项卡切换信号，用于动态显示/隐藏颜色配置
-        self.tab_widget.currentChanged.connect(self.on_tab_changed)
+        # 连接屏幕类型切换信号，用于动态显示/隐藏颜色配置
+        self.screen_type_combo.currentTextChanged.connect(self.on_screen_type_changed)
         
         # 初始状态：如果不是TFT模式，隐藏颜色配置
-        if "OLED" in self.screen_type_combo.currentText():
-            self.toggle_color_config(False)
+        if self.screen_type_combo.currentText() == "OLED":
+            self.color_group.setVisible(False)
 
     # ---------------- 配置处理方法 ----------------
     def on_screen_type_changed(self):
@@ -1280,6 +1283,15 @@ class MenuDesigner(QWidget):
             'color_mode': self.color_mode_combo.currentText(),
             'preview_size': self.preview_size_combo.currentText()
         }
+        
+        # 根据屏幕类型显示或隐藏颜色配置
+        if hasattr(self, 'color_group'):
+            if screen_type == "OLED":
+                # OLED模式：隐藏颜色配置
+                self.color_group.setVisible(False)
+            else:
+                # TFT模式：显示颜色配置
+                self.color_group.setVisible(True)
         
         # 根据屏幕类型设置默认参数，但保留用户的自定义设置
         if screen_type == "OLED":
@@ -1373,10 +1385,11 @@ class MenuDesigner(QWidget):
             
             # 根据屏幕类型设置颜色
             if "OLED" in screen_type:
-                self.preview.bg_color = Qt.black
-                self.preview.fg_color = QColor(0, 255, 0)  # OLED绿色
-                self.preview.selected_bg_color = QColor(0, 255, 0)
-                self.preview.selected_fg_color = Qt.black
+                # OLED模式：使用固定的蓝底黄色字体
+                self.preview.bg_color = QColor(0, 0, 128)  # 蓝色背景
+                self.preview.fg_color = QColor(255, 255, 0)  # 黄色字体
+                self.preview.selected_bg_color = QColor(255, 255, 0)  # 黄色选中背景
+                self.preview.selected_fg_color = QColor(0, 0, 128)  # 蓝色选中字体
             else:  # TFT
                 self.preview.bg_color = QColor(0, 64, 128)  # 深蓝色
                 self.preview.fg_color = Qt.white
@@ -1600,30 +1613,70 @@ class MenuDesigner(QWidget):
                                 except Exception as e:
                                     print(f"应用屏幕尺寸失败: {e}")
                             
-                            # 应用TFT颜色设置（如果是TFT模式）
-                            if hasattr(self, 'screen_type_combo') and self.screen_type_combo.currentText() == "TFT":
+                            # 应用颜色设置（OLED和TFT模式都支持）
+                            if hasattr(self, 'screen_type_combo'):
+                                # 应用背景颜色
                                 if 'bg_color' in self.current_settings and hasattr(self, 'bg_color_hex'):
                                     self.bg_color_hex.blockSignals(True)
                                     self.bg_color_hex.setText(self.current_settings['bg_color'])
                                     self.bg_color_hex.blockSignals(False)
                                     print(f"设置背景颜色: {self.current_settings['bg_color']}")
+                                    
+                                    # 更新背景颜色按钮
+                                    try:
+                                        from PySide6.QtGui import QColor
+                                        color = QColor(self.current_settings['bg_color'])
+                                        if color.isValid():
+                                            self.bg_color_btn.setStyleSheet(
+                                                f"background-color: {color.name()}; color: {'white' if color.lightness() < 128 else 'black'};"
+                                            )
+                                    except:
+                                        pass
+                                
+                                # 应用字体颜色
                                 if 'font_color' in self.current_settings and hasattr(self, 'font_color_hex'):
                                     self.font_color_hex.blockSignals(True)
                                     self.font_color_hex.setText(self.current_settings['font_color'])
                                     self.font_color_hex.blockSignals(False)
                                     print(f"设置字体颜色: {self.current_settings['font_color']}")
+                                    
+                                    # 更新字体颜色按钮
+                                    try:
+                                        from PySide6.QtGui import QColor
+                                        color = QColor(self.current_settings['font_color'])
+                                        if color.isValid():
+                                            self.font_color_btn.setStyleSheet(
+                                                f"background-color: {color.name()}; color: {'white' if color.lightness() < 128 else 'black'};"
+                                            )
+                                    except:
+                                        pass
+                                
+                                # 应用选中项背景颜色
                                 if 'selected_bg' in self.current_settings and hasattr(self, 'selected_bg_hex'):
                                     self.selected_bg_hex.blockSignals(True)
                                     self.selected_bg_hex.setText(self.current_settings['selected_bg'])
                                     self.selected_bg_hex.blockSignals(False)
                                     print(f"设置选中背景: {self.current_settings['selected_bg']}")
+                                    
+                                    # 更新选中背景按钮
+                                    try:
+                                        from PySide6.QtGui import QColor
+                                        color = QColor(self.current_settings['selected_bg'])
+                                        if color.isValid():
+                                            self.selected_bg_btn.setStyleSheet(
+                                                f"background-color: {color.name()}; color: {'white' if color.lightness() < 128 else 'black'};"
+                                            )
+                                    except:
+                                        pass
+                                
+                                # 应用选中项字体颜色
                                 if 'selected_font' in self.current_settings and hasattr(self, 'selected_font_hex'):
                                     self.selected_font_hex.blockSignals(True)
                                     self.selected_font_hex.setText(self.current_settings['selected_font'])
                                     self.selected_font_hex.blockSignals(False)
                                     print(f"设置选中字体: {self.current_settings['selected_font']}")
                                     
-                                    # 更新按钮颜色
+                                    # 更新选中字体按钮
                                     try:
                                         from PySide6.QtGui import QColor
                                         color = QColor(self.current_settings['selected_font'])
