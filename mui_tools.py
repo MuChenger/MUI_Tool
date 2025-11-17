@@ -1965,48 +1965,60 @@ class MenuDesigner(QWidget):
 
     # ---------------- 菜单导航 ----------------
     def on_key(self,key):
-        visible = [c for c in self.preview.menu_root.children if c.visible]
-        cur_root = self.preview.menu_root
-        
-        if key=="Up":
-            self.preview.cursor_index = max(0,self.preview.cursor_index-1)
-            cur_root.cursor_pos = self.preview.cursor_index
-        elif key=="Down":
-            self.preview.cursor_index = min(len(visible)-1,self.preview.cursor_index+1)
-            cur_root.cursor_pos = self.preview.cursor_index
-        elif key=="Enter":
-            idx = self.preview.cursor_index
-            if idx<len(visible):
-                node = visible[idx]
+        # 处理右键按下 - 进入子菜单或执行
+        if key == "Right":
+            visible = [c for c in self.preview.menu_root.children if c.visible]
+            if self.preview.cursor_index < len(visible):
+                node = visible[self.preview.cursor_index]
                 if node.is_exec:
+                    # 执行项
                     print(f"执行回调: {node.callback_name}")
-                elif node.children:
-                    # 进入子菜单：切换到子菜单根节点
+                elif node.children and len(node.children) > 0:
+                    # 进入子菜单
                     self.preview.menu_root = node
                     self.preview.cursor_index = 0  # 重置到第一项
                     print(f"进入子菜单: {node.name}")
-        elif key=="Back":
+                else:
+                    print("该菜单项没有子菜单")
+        # 处理左键按下 - 返回上级菜单
+        elif key == "Left":
             if self.preview.menu_root.parent:
-                # 返回上级菜单：保存当前位置并切换到父菜单
-                current_root = self.preview.menu_root  # 保存当前根节点引用
-                self.preview.menu_root.cursor_pos = self.preview.cursor_index
+                # 保存当前菜单项的位置
+                current_root = self.preview.menu_root
+                current_root.cursor_pos = self.preview.cursor_index
+                
+                # 返回上级菜单
                 self.preview.menu_root = self.preview.menu_root.parent
                 
-                # 在父菜单中找到当前根节点的位置
+                # 在父菜单中找到当前子菜单的位置
                 parent_visible = [c for c in self.preview.menu_root.children if c.visible]
                 for i, child in enumerate(parent_visible):
-                    if child == current_root:  # 使用保存的当前根节点引用
+                    if child == current_root:
                         self.preview.cursor_index = i
                         break
                 else:
                     self.preview.cursor_index = 0
                 print(f"返回上级菜单: {self.preview.menu_root.name}")
+            else:
+                print("已在根菜单，无法返回")
+        # 处理上下键 - 导航菜单项
+        else:
+            visible = [c for c in self.preview.menu_root.children if c.visible]
+            
+            if key == "Up":
+                self.preview.cursor_index = max(0, self.preview.cursor_index - 1)
+            elif key == "Down":
+                self.preview.cursor_index = min(len(visible) - 1, self.preview.cursor_index + 1)
+            
+            # 保存当前菜单项的位置
+            self.preview.menu_root.cursor_pos = self.preview.cursor_index
+        
+        # 重新渲染菜单
         self.preview.render_menu()
 
     def apply_modern_style(self):
         """应用现代化样式表"""
-        modern_style = """
-        /* 现代化样式表 - 增强版深色主题 */
+        modern_style = """        /* 现代化样式表 - 增强版深色主题 */
         QWidget {
             background-color: #1e1e1e;
             color: #e0e0e0;
