@@ -822,34 +822,175 @@ class MenuDesigner(QWidget):
         keys_layout.setSpacing(8)
         keys_layout.setContentsMargins(12, 12, 12, 12)
         
-        # 主按键区域
-        main_key_layout = QHBoxLayout()
-        main_key_layout.setSpacing(10)
+        # 嵌入式风格四键布局 - 上方一个，下方三个
+        keys_grid_layout = QVBoxLayout()
+        keys_grid_layout.setSpacing(10)
+        keys_grid_layout.setContentsMargins(5, 5, 5, 5)
         
-        # 四键模式：上、下、确认、返回
-        self.key_up_btn = QPushButton("↑ 上")
-        self.key_down_btn = QPushButton("↓ 下")
-        self.key_enter_btn = QPushButton("↵ 确认")
-        self.key_back_btn = QPushButton("← 返回")
+        # 上方一个按键（居中）
+        top_row = QHBoxLayout()
+        top_row.setSpacing(0)
+        top_row.addStretch()
+        self.key_up_btn = QPushButton("↑")
+        self.key_up_btn.setProperty("class", "key-btn")
+        self.key_up_btn.setFixedSize(50, 40)  # 稍大一些，作为主按键
+        self.key_up_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #5a5a5a, stop:1 #3a3a3a);
+                border: 2px solid #2a2a2a;
+                border-radius: 5px;
+                color: #ffffff;
+                font-size: 18px;
+                font-weight: bold;
+                text-align: center;
+                padding: 0px;
+                margin: 0px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #6a6a6a, stop:1 #4a4a4a);
+                border-color: #0078d4;
+            }
+            QPushButton:pressed {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #2a2a2a, stop:1 #1a1a1a);
+                border-color: #005a9e;
+            }
+        """)
+        top_row.addWidget(self.key_up_btn)
+        top_row.addStretch()
         
-        # 设置按键按钮样式
-        for btn in [self.key_up_btn, self.key_down_btn, self.key_enter_btn, self.key_back_btn]:
-            btn.setProperty("class", "key-btn")
-            btn.setMinimumHeight(40)
-            btn.setMinimumWidth(80)
+        # 下方三个按键（水平排列）
+        bottom_row = QHBoxLayout()
+        bottom_row.setSpacing(15)
+        bottom_row.addStretch()
         
+        # 左键
+        self.key_left_btn = QPushButton("←")
+        self.key_left_btn.setProperty("class", "key-btn")
+        self.key_left_btn.setFixedSize(45, 35)  # 适中大小
+        self.key_left_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #5a5a5a, stop:1 #3a3a3a);
+                border: 2px solid #2a2a2a;
+                border-radius: 4px;
+                color: #ffffff;
+                font-size: 16px;
+                font-weight: bold;
+                text-align: center;
+                padding: 0px;
+                margin: 0px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #6a6a6a, stop:1 #4a4a4a);
+                border-color: #0078d4;
+            }
+            QPushButton:pressed {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #2a2a2a, stop:1 #1a1a1a);
+                border-color: #005a9e;
+            }
+        """)
+        bottom_row.addWidget(self.key_left_btn)
+        
+        # 下键
+        self.key_down_btn = QPushButton("↓")
+        self.key_down_btn.setProperty("class", "key-btn")
+        self.key_down_btn.setFixedSize(45, 35)  # 与左键相同
+        self.key_down_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #5a5a5a, stop:1 #3a3a3a);
+                border: 2px solid #2a2a2a;
+                border-radius: 4px;
+                color: #ffffff;
+                font-size: 16px;
+                font-weight: bold;
+                text-align: center;
+                padding: 0px;
+                margin: 0px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #6a6a6a, stop:1 #4a4a4a);
+                border-color: #0078d4;
+            }
+            QPushButton:pressed {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #2a2a2a, stop:1 #1a1a1a);
+                border-color: #005a9e;
+            }
+        """)
+        bottom_row.addWidget(self.key_down_btn)
+        
+        # 右键
+        self.key_right_btn = QPushButton("→")
+        self.key_right_btn.setProperty("class", "key-btn")
+        self.key_right_btn.setFixedSize(45, 35)  # 与其他键相同
+        self.key_right_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #5a5a5a, stop:1 #3a3a3a);
+                border: 2px solid #2a2a2a;
+                border-radius: 4px;
+                color: #ffffff;
+                font-size: 16px;
+                font-weight: bold;
+                text-align: center;
+                padding: 0px;
+                margin: 0px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #6a6a6a, stop:1 #4a4a4a);
+                border-color: #0078d4;
+            }
+            QPushButton:pressed {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #2a2a2a, stop:1 #1a1a1a);
+                border-color: #005a9e;
+            }
+        """)
+        bottom_row.addWidget(self.key_right_btn)
+        
+        bottom_row.addStretch()
+        
+        # 将行添加到按键布局
+        keys_grid_layout.addLayout(top_row)
+        keys_grid_layout.addLayout(bottom_row)
+        
+        # 创建嵌入式风格的按键容器
+        keys_container = QWidget()
+        keys_container.setLayout(keys_grid_layout)
+        keys_container.setStyleSheet("""
+            QWidget {
+                background-color: #2a2a2a;
+                border: 2px solid #1a1a1a;
+                border-radius: 6px;
+                padding: 8px;
+            }
+        """)
+        keys_container_layout = QHBoxLayout()
+        keys_container_layout.addStretch()
+        keys_container_layout.addWidget(keys_container)
+        keys_container_layout.addStretch()
+        
+        keys_layout.addLayout(keys_container_layout)
+        
+        # 连接按键事件（修改为支持四个方向键）
         self.key_up_btn.clicked.connect(lambda: self.on_key("Up"))
         self.key_down_btn.clicked.connect(lambda: self.on_key("Down"))
-        self.key_enter_btn.clicked.connect(lambda: self.on_key("Enter"))
-        self.key_back_btn.clicked.connect(lambda: self.on_key("Back"))
+        self.key_left_btn.clicked.connect(lambda: self.on_key("Left"))
+        self.key_right_btn.clicked.connect(lambda: self.on_key("Right"))
         
-        main_key_layout.addWidget(self.key_up_btn)
-        main_key_layout.addWidget(self.key_down_btn)
-        main_key_layout.addWidget(self.key_enter_btn)
-        main_key_layout.addWidget(self.key_back_btn)
+        # 添加确认和返回功能到方向键
+        # 这里我们暂时不创建确认和返回按钮，而是用方向键的组合来实现
+        # 可以考虑长按或者双击等操作，但目前先保持四个方向键
         
-        keys_layout.addLayout(main_key_layout)
-        middle_layout.addWidget(keys_group)
+        # middle_layout.addWidget(keys_group)  # 从中间布局移除按键组
         
         main_layout.addWidget(middle_widget, 1)  # 中间自适应宽度
 
@@ -860,6 +1001,175 @@ class MenuDesigner(QWidget):
         right_layout.setSpacing(10)
         right_layout.setContentsMargins(0, 0, 0, 0)
         
+        # 首先添加按键模拟组到右下角
+        keys_group = QGroupBox("按键模拟")
+        keys_layout = QVBoxLayout(keys_group)
+        keys_layout.setSpacing(8)
+        keys_layout.setContentsMargins(12, 12, 12, 12)
+        
+        # 嵌入式风格四键布局 - 上方一个，下方三个
+        keys_grid_layout = QVBoxLayout()
+        keys_grid_layout.setSpacing(10)
+        keys_grid_layout.setContentsMargins(5, 5, 5, 5)
+        
+        # 上方一个按键（居中）
+        top_row = QHBoxLayout()
+        top_row.setSpacing(0)
+        top_row.addStretch()
+        self.key_up_btn = QPushButton("↑")
+        self.key_up_btn.setProperty("class", "key-btn")
+        self.key_up_btn.setFixedSize(50, 40)  # 稍大一些，作为主按键
+        self.key_up_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #5a5a5a, stop:1 #3a3a3a);
+                border: 2px solid #2a2a2a;
+                border-radius: 5px;
+                color: #ffffff;
+                font-size: 18px;
+                font-weight: bold;
+                text-align: center;
+                padding: 0px;
+                margin: 0px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #6a6a6a, stop:1 #4a4a4a);
+                border-color: #0078d4;
+            }
+            QPushButton:pressed {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #2a2a2a, stop:1 #1a1a1a);
+                border-color: #005a9e;
+            }
+        """)
+        top_row.addWidget(self.key_up_btn)
+        top_row.addStretch()
+        
+        # 下方三个按键（水平排列）
+        bottom_row = QHBoxLayout()
+        bottom_row.setSpacing(15)
+        bottom_row.addStretch()
+        
+        # 左键
+        self.key_left_btn = QPushButton("←")
+        self.key_left_btn.setProperty("class", "key-btn")
+        self.key_left_btn.setFixedSize(45, 35)  # 适中大小
+        self.key_left_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #5a5a5a, stop:1 #3a3a3a);
+                border: 2px solid #2a2a2a;
+                border-radius: 4px;
+                color: #ffffff;
+                font-size: 16px;
+                font-weight: bold;
+                text-align: center;
+                padding: 0px;
+                margin: 0px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #6a6a6a, stop:1 #4a4a4a);
+                border-color: #0078d4;
+            }
+            QPushButton:pressed {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #2a2a2a, stop:1 #1a1a1a);
+                border-color: #005a9e;
+            }
+        """)
+        bottom_row.addWidget(self.key_left_btn)
+        
+        # 下键
+        self.key_down_btn = QPushButton("↓")
+        self.key_down_btn.setProperty("class", "key-btn")
+        self.key_down_btn.setFixedSize(45, 35)  # 与左键相同
+        self.key_down_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #5a5a5a, stop:1 #3a3a3a);
+                border: 2px solid #2a2a2a;
+                border-radius: 4px;
+                color: #ffffff;
+                font-size: 16px;
+                font-weight: bold;
+                text-align: center;
+                padding: 0px;
+                margin: 0px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #6a6a6a, stop:1 #4a4a4a);
+                border-color: #0078d4;
+            }
+            QPushButton:pressed {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #2a2a2a, stop:1 #1a1a1a);
+                border-color: #005a9e;
+            }
+        """)
+        bottom_row.addWidget(self.key_down_btn)
+        
+        # 右键
+        self.key_right_btn = QPushButton("→")
+        self.key_right_btn.setProperty("class", "key-btn")
+        self.key_right_btn.setFixedSize(45, 35)  # 与其他键相同
+        self.key_right_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #5a5a5a, stop:1 #3a3a3a);
+                border: 2px solid #2a2a2a;
+                border-radius: 4px;
+                color: #ffffff;
+                font-size: 16px;
+                font-weight: bold;
+                text-align: center;
+                padding: 0px;
+                margin: 0px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #6a6a6a, stop:1 #4a4a4a);
+                border-color: #0078d4;
+            }
+            QPushButton:pressed {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #2a2a2a, stop:1 #1a1a1a);
+                border-color: #005a9e;
+            }
+        """)
+        bottom_row.addWidget(self.key_right_btn)
+        
+        bottom_row.addStretch()
+        
+        # 将行添加到按键布局
+        keys_grid_layout.addLayout(top_row)
+        keys_grid_layout.addLayout(bottom_row)
+        
+        # 创建嵌入式风格的按键容器
+        keys_container = QWidget()
+        keys_container.setLayout(keys_grid_layout)
+        keys_container.setStyleSheet("""
+            QWidget {
+                background-color: #2a2a2a;
+                border: 2px solid #1a1a1a;
+                border-radius: 6px;
+                padding: 8px;
+            }
+        """)
+        keys_container_layout = QHBoxLayout()
+        keys_container_layout.addStretch()
+        keys_container_layout.addWidget(keys_container)
+        keys_container_layout.addStretch()
+        
+        keys_layout.addLayout(keys_container_layout)
+        
+        # 连接按键事件
+        self.key_up_btn.clicked.connect(lambda: self.on_key("Up"))
+        self.key_down_btn.clicked.connect(lambda: self.on_key("Down"))
+        self.key_left_btn.clicked.connect(lambda: self.on_key("Left"))
+        self.key_right_btn.clicked.connect(lambda: self.on_key("Right"))
         # 导入选项卡控件
         from PySide6.QtWidgets import QTabWidget
         
@@ -1111,6 +1421,9 @@ class MenuDesigner(QWidget):
         
         # 添加选项卡控件到右侧布局
         right_layout.addWidget(self.tab_widget)
+        
+        # 将按键组添加到右侧布局的底部（右下角位置）
+        right_layout.addWidget(keys_group)
         
         main_layout.addWidget(right_widget, 0)  # 右侧固定宽度
         
