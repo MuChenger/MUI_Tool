@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (QApplication, QWidget, QTreeWidget, QTreeWidgetIt
                                QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
                                QLineEdit, QFileDialog, QGroupBox, QComboBox)
 from PySide6.QtGui import QPainter, QPixmap, QColor, QFont
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTime
 
 # ---------------- Menu 数据结构 ----------------
 class MenuItem:
@@ -812,13 +812,43 @@ class MenuDesigner(QWidget):
         preview_layout.setSpacing(8)
         preview_layout.setContentsMargins(12, 12, 12, 12)
         
-        # 创建预览控件 - 增加最小高度以确保与右侧对齐
+        # 创建预览控件 - 调整高度以容纳调试信息框
         self.preview = MenuPreview()
-        self.preview.setMinimumHeight(450)  # 增加预览最小高度以与右侧按键组对齐
-        preview_layout.addWidget(self.preview, 1)
+        self.preview.setMinimumHeight(360)  # 进一步减小预览高度，为调试框留出更多空间
+        preview_layout.addWidget(self.preview, 1)  # 使用拉伸因子1，让预览控件占用剩余空间
+        # 调试信息框 - 增加高度以显示10行调试信息
+        debug_group = QGroupBox("调试信息")
+        debug_group.setFixedHeight(230)  # 增加调试信息框高度以确保底部闭合
+        debug_layout = QVBoxLayout(debug_group)
+        debug_layout.setSpacing(5)  # 调整间距确保布局正确
+        debug_layout.setContentsMargins(10, 10, 10, 10)  # 设置合适的边距确保闭合
+        
+        # 创建调试信息显示文本框 - 调整为显示10行
+        self.debug_text = QLabel("等待按键操作...")
+        self.debug_text.setStyleSheet("""
+            QLabel {
+                background-color: #2d2d2d;
+                color: #e0e0e0;
+                border: 1px solid #555555;
+                border-radius: 4px;
+                padding: 5px;
+                font-family: "Consolas", "Courier New", monospace;
+                font-size: 9pt;
+                line-height: 1.1;
+            }
+        """)
+        self.debug_text.setWordWrap(True)
+        self.debug_text.setMinimumHeight(200)  # 调整文本高度
+        self.debug_text.setMaximumHeight(200)  # 固定高度，确保显示一致
+        self.debug_text.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+        debug_layout.addWidget(self.debug_text)
+        debug_layout.addStretch()  # 添加弹性空间确保底部闭合
+        
+        preview_layout.addWidget(debug_group)
         
         middle_layout.addWidget(preview_group)
-        middle_layout.addStretch()  # 添加弹性空间，确保底部对齐
+        # 移除弹性空间，让调试信息框自然位于底部
+        # middle_layout.addStretch()  # 注释掉弹性空间，确保底部对齐
         
         main_layout.addWidget(middle_widget, 1)  # 中间自适应宽度
 
@@ -1849,6 +1879,9 @@ class MenuDesigner(QWidget):
 
     # ---------------- 菜单导航 ----------------
     def on_key(self,key):
+        debug_info = ""
+        timestamp = f"[{QTime.currentTime().toString('hh:mm:ss')}]"
+        
         # 处理右键按下 - 进入子菜单或执行
         if key == "Right":
             visible = [c for c in self.preview.menu_root.children if c.visible]
@@ -1856,14 +1889,17 @@ class MenuDesigner(QWidget):
                 node = visible[self.preview.cursor_index]
                 if node.is_exec:
                     # 执行项
-                    print(f"执行回调: {node.callback_name}")
+                    debug_info = f"{timestamp} 按键: Right → 执行回调函数: {node.callback_name or '(未命名)'}"
+                    print(debug_info)
                 elif node.children and len(node.children) > 0:
                     # 进入子菜单
                     self.preview.menu_root = node
                     self.preview.cursor_index = 0  # 重置到第一项
-                    print(f"进入子菜单: {node.name}")
+                    debug_info = f"{timestamp} 按键: Right → 进入子菜单: {node.name} (包含{len(node.children)}个子项)"
+                    print(debug_info)
                 else:
-                    print("该菜单项没有子菜单")
+                    debug_info = f"{timestamp} 按键: Right → 该菜单项[{node.name}]没有子菜单"
+                    print(debug_info)
         # 处理左键按下 - 返回上级菜单
         elif key == "Left":
             if self.preview.menu_root.parent:
@@ -1882,20 +1918,48 @@ class MenuDesigner(QWidget):
                         break
                 else:
                     self.preview.cursor_index = 0
-                print(f"返回上级菜单: {self.preview.menu_root.name}")
+                debug_info = f"{timestamp} 按键: Left → 返回上级菜单: {self.preview.menu_root.name}"
+                print(debug_info)
             else:
-                print("已在根菜单，无法返回")
+                debug_info = f"{timestamp} 按键: Left → 已在根菜单，无法返回"
+                print(debug_info)
         # 处理上下键 - 导航菜单项
         else:
             visible = [c for c in self.preview.menu_root.children if c.visible]
+            current_item_name = visible[self.preview.cursor_index].name if self.preview.cursor_index < len(visible) else "未知"
             
             if key == "Up":
+                old_index = self.preview.cursor_index
                 self.preview.cursor_index = max(0, self.preview.cursor_index - 1)
+                new_item_name = visible[self.preview.cursor_index].name if self.preview.cursor_index < len(visible) else "未知"
+                debug_info = f"{timestamp} 按键: Up → 从[{current_item_name}]({old_index}) 移动到 [{new_item_name}]({self.preview.cursor_index})"
             elif key == "Down":
+                old_index = self.preview.cursor_index
                 self.preview.cursor_index = min(len(visible) - 1, self.preview.cursor_index + 1)
+                new_item_name = visible[self.preview.cursor_index].name if self.preview.cursor_index < len(visible) else "未知"
+                debug_info = f"{timestamp} 按键: Down → 从[{current_item_name}]({old_index}) 移动到 [{new_item_name}]({self.preview.cursor_index})"
+            else:
+                debug_info = f"{timestamp} 按键: {key} → 未知按键"
             
             # 保存当前菜单项的位置
             self.preview.menu_root.cursor_pos = self.preview.cursor_index
+            print(debug_info)
+        
+        # 更新调试信息显示
+        if hasattr(self, 'debug_text') and debug_info:
+            # 获取当前调试信息
+            current_text = self.debug_text.text()
+            if current_text == "等待按键操作...":
+                new_text = debug_info
+            else:
+                # 保留最近的10条记录
+                lines = current_text.split('\n')
+                lines.append(debug_info)
+                if len(lines) > 10:
+                    lines = lines[-10:]
+                new_text = '\n'.join(lines)
+            
+            self.debug_text.setText(new_text)
         
         # 重新渲染菜单
         self.preview.render_menu()
