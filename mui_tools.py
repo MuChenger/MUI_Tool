@@ -106,17 +106,17 @@ class MenuPreview(QWidget):
         self.screen_type = screen_type
         self.color_mode = color_mode
         
-        # 根据屏幕类型调整参数
-        if screen_type == "128x128 OLED":
-            self.fb_w, self.fb_h = 128, 128
+        # 根据屏幕类型调整参数 - 不再硬编码尺寸，使用当前设置
+        if screen_type == "OLED":
+            # OLED类型：使用当前framebuffer尺寸
             self.base_font_px = 8
             self.max_lines = 16
             self.bg_color = Qt.black
             self.fg_color = QColor(0, 255, 0)  # OLED绿色
             self.selected_bg_color = QColor(0, 255, 0)
             self.selected_fg_color = Qt.black
-        elif screen_type == "128x128 TFT":
-            self.fb_w, self.fb_h = 128, 128
+        elif screen_type == "TFT":
+            # TFT类型：使用当前framebuffer尺寸
             self.base_font_px = 12
             self.max_lines = 12
             
@@ -236,7 +236,7 @@ class MenuPreview(QWidget):
                 else:
                     self.selected_fg_color = Qt.black
         else:  # 默认使用OLED
-            self.fb_w, self.fb_h = 128, 128
+            # 默认OLED类型：使用当前framebuffer尺寸
             self.base_font_px = 8
             self.max_lines = 16
             self.bg_color = Qt.black
@@ -809,188 +809,13 @@ class MenuDesigner(QWidget):
         preview_layout.setSpacing(8)
         preview_layout.setContentsMargins(12, 12, 12, 12)
         
-        # 创建预览控件
+        # 创建预览控件 - 增加最小高度以确保与右侧对齐
         self.preview = MenuPreview()
-        self.preview.setMinimumHeight(300)  # 增加预览最小高度
+        self.preview.setMinimumHeight(450)  # 增加预览最小高度以与右侧按键组对齐
         preview_layout.addWidget(self.preview, 1)
         
         middle_layout.addWidget(preview_group)
-        
-        # 按键模拟
-        keys_group = QGroupBox("按键模拟")
-        keys_layout = QVBoxLayout(keys_group)
-        keys_layout.setSpacing(8)
-        keys_layout.setContentsMargins(12, 12, 12, 12)
-        
-        # 嵌入式风格四键布局 - 上方一个，下方三个
-        keys_grid_layout = QVBoxLayout()
-        keys_grid_layout.setSpacing(10)
-        keys_grid_layout.setContentsMargins(5, 5, 5, 5)
-        
-        # 上方一个按键（居中）
-        top_row = QHBoxLayout()
-        top_row.setSpacing(0)
-        top_row.addStretch()
-        self.key_up_btn = QPushButton("↑")
-        self.key_up_btn.setProperty("class", "key-btn")
-        self.key_up_btn.setFixedSize(50, 40)  # 稍大一些，作为主按键
-        self.key_up_btn.setStyleSheet("""
-            QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #5a5a5a, stop:1 #3a3a3a);
-                border: 2px solid #2a2a2a;
-                border-radius: 5px;
-                color: #ffffff;
-                font-size: 18px;
-                font-weight: bold;
-                text-align: center;
-                padding: 0px;
-                margin: 0px;
-            }
-            QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #6a6a6a, stop:1 #4a4a4a);
-                border-color: #0078d4;
-            }
-            QPushButton:pressed {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #2a2a2a, stop:1 #1a1a1a);
-                border-color: #005a9e;
-            }
-        """)
-        top_row.addWidget(self.key_up_btn)
-        top_row.addStretch()
-        
-        # 下方三个按键（水平排列）
-        bottom_row = QHBoxLayout()
-        bottom_row.setSpacing(15)
-        bottom_row.addStretch()
-        
-        # 左键
-        self.key_left_btn = QPushButton("←")
-        self.key_left_btn.setProperty("class", "key-btn")
-        self.key_left_btn.setFixedSize(45, 35)  # 适中大小
-        self.key_left_btn.setStyleSheet("""
-            QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #5a5a5a, stop:1 #3a3a3a);
-                border: 2px solid #2a2a2a;
-                border-radius: 4px;
-                color: #ffffff;
-                font-size: 16px;
-                font-weight: bold;
-                text-align: center;
-                padding: 0px;
-                margin: 0px;
-            }
-            QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #6a6a6a, stop:1 #4a4a4a);
-                border-color: #0078d4;
-            }
-            QPushButton:pressed {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #2a2a2a, stop:1 #1a1a1a);
-                border-color: #005a9e;
-            }
-        """)
-        bottom_row.addWidget(self.key_left_btn)
-        
-        # 下键
-        self.key_down_btn = QPushButton("↓")
-        self.key_down_btn.setProperty("class", "key-btn")
-        self.key_down_btn.setFixedSize(45, 35)  # 与左键相同
-        self.key_down_btn.setStyleSheet("""
-            QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #5a5a5a, stop:1 #3a3a3a);
-                border: 2px solid #2a2a2a;
-                border-radius: 4px;
-                color: #ffffff;
-                font-size: 16px;
-                font-weight: bold;
-                text-align: center;
-                padding: 0px;
-                margin: 0px;
-            }
-            QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #6a6a6a, stop:1 #4a4a4a);
-                border-color: #0078d4;
-            }
-            QPushButton:pressed {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #2a2a2a, stop:1 #1a1a1a);
-                border-color: #005a9e;
-            }
-        """)
-        bottom_row.addWidget(self.key_down_btn)
-        
-        # 右键
-        self.key_right_btn = QPushButton("→")
-        self.key_right_btn.setProperty("class", "key-btn")
-        self.key_right_btn.setFixedSize(45, 35)  # 与其他键相同
-        self.key_right_btn.setStyleSheet("""
-            QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #5a5a5a, stop:1 #3a3a3a);
-                border: 2px solid #2a2a2a;
-                border-radius: 4px;
-                color: #ffffff;
-                font-size: 16px;
-                font-weight: bold;
-                text-align: center;
-                padding: 0px;
-                margin: 0px;
-            }
-            QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #6a6a6a, stop:1 #4a4a4a);
-                border-color: #0078d4;
-            }
-            QPushButton:pressed {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #2a2a2a, stop:1 #1a1a1a);
-                border-color: #005a9e;
-            }
-        """)
-        bottom_row.addWidget(self.key_right_btn)
-        
-        bottom_row.addStretch()
-        
-        # 将行添加到按键布局
-        keys_grid_layout.addLayout(top_row)
-        keys_grid_layout.addLayout(bottom_row)
-        
-        # 创建嵌入式风格的按键容器
-        keys_container = QWidget()
-        keys_container.setLayout(keys_grid_layout)
-        keys_container.setStyleSheet("""
-            QWidget {
-                background-color: #2a2a2a;
-                border: 2px solid #1a1a1a;
-                border-radius: 6px;
-                padding: 8px;
-            }
-        """)
-        keys_container_layout = QHBoxLayout()
-        keys_container_layout.addStretch()
-        keys_container_layout.addWidget(keys_container)
-        keys_container_layout.addStretch()
-        
-        keys_layout.addLayout(keys_container_layout)
-        
-        # 连接按键事件（修改为支持四个方向键）
-        self.key_up_btn.clicked.connect(lambda: self.on_key("Up"))
-        self.key_down_btn.clicked.connect(lambda: self.on_key("Down"))
-        self.key_left_btn.clicked.connect(lambda: self.on_key("Left"))
-        self.key_right_btn.clicked.connect(lambda: self.on_key("Right"))
-        
-        # 添加确认和返回功能到方向键
-        # 这里我们暂时不创建确认和返回按钮，而是用方向键的组合来实现
-        # 可以考虑长按或者双击等操作，但目前先保持四个方向键
-        
-        # middle_layout.addWidget(keys_group)  # 从中间布局移除按键组
+        middle_layout.addStretch()  # 添加弹性空间，确保底部对齐
         
         main_layout.addWidget(middle_widget, 1)  # 中间自适应宽度
 
@@ -1264,7 +1089,7 @@ class MenuDesigner(QWidget):
         screen_type_layout = QHBoxLayout()
         screen_type_layout.addWidget(QLabel("屏幕类型:"))
         self.screen_type_combo = QComboBox()
-        self.screen_type_combo.addItems(["128x128 OLED", "128x128 TFT"])
+        self.screen_type_combo.addItems(["OLED", "TFT"])
         self.screen_type_combo.currentTextChanged.connect(self.on_screen_type_changed)
         screen_type_layout.addWidget(self.screen_type_combo)
         screen_type_layout.addStretch()
@@ -1457,7 +1282,7 @@ class MenuDesigner(QWidget):
         }
         
         # 根据屏幕类型设置默认参数，但保留用户的自定义设置
-        if "OLED" in screen_type:
+        if screen_type == "OLED":
             # OLED模式：使用保存的设置或默认值
             if self.color_mode_combo.currentText() in ["16色", "256色", "真彩色"]:
                 # 如果当前是TFT专用的颜色模式，则切换为OLED兼容的模式
@@ -1469,7 +1294,7 @@ class MenuDesigner(QWidget):
             # 保留用户的字体大小设置，不强制切换
             # self.font_size_combo.setCurrentText("小(8px)")  # 注释掉强制设置
             
-        elif "TFT" in screen_type:
+        elif screen_type == "TFT":
             # TFT模式：使用保存的设置或默认值
             if self.color_mode_combo.currentText() == "单色":
                 # 如果当前是单色模式，则切换为TFT推荐的颜色模式
@@ -1760,17 +1585,23 @@ class MenuDesigner(QWidget):
                                 print(f"设置预览大小: {self.current_settings['preview_size']}")
                             
                             # 应用屏幕尺寸
-                            if hasattr(self, 'screen_width_edit') and 'screen_width' in self.current_settings:
+                            if hasattr(self, 'screen_width_edit') and 'screen_height_edit' and 'screen_width' in self.current_settings and 'screen_height' in self.current_settings:
                                 self.screen_width_edit.blockSignals(True)
-                                self.screen_width_edit.setText(self.current_settings['screen_width'])
-                                self.screen_width_edit.blockSignals(False)
-                            if hasattr(self, 'screen_height_edit') and 'screen_height' in self.current_settings:
                                 self.screen_height_edit.blockSignals(True)
+                                self.screen_width_edit.setText(self.current_settings['screen_width'])
                                 self.screen_height_edit.setText(self.current_settings['screen_height'])
+                                self.screen_width_edit.blockSignals(False)
                                 self.screen_height_edit.blockSignals(False)
+                                
+                                # 实际应用屏幕尺寸设置到预览控件
+                                try:
+                                    self.on_apply_screen_size()
+                                    print(f"应用屏幕尺寸: {self.current_settings['screen_width']}x{self.current_settings['screen_height']}")
+                                except Exception as e:
+                                    print(f"应用屏幕尺寸失败: {e}")
                             
                             # 应用TFT颜色设置（如果是TFT模式）
-                            if hasattr(self, 'screen_type_combo') and self.screen_type_combo.currentText() == "128x128 TFT":
+                            if hasattr(self, 'screen_type_combo') and self.screen_type_combo.currentText() == "TFT":
                                 if 'bg_color' in self.current_settings and hasattr(self, 'bg_color_hex'):
                                     self.bg_color_hex.blockSignals(True)
                                     self.bg_color_hex.setText(self.current_settings['bg_color'])
