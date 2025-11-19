@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (QApplication, QWidget, QTreeWidget, QTreeWidgetIt
                                QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
                                QLineEdit, QFileDialog, QGroupBox, QComboBox)
 from PySide6.QtGui import QPainter, QPixmap, QColor, QFont
-from PySide6.QtCore import Qt, QTime
+from PySide6.QtCore import Qt, QTime, QTimer
 
 # ---------------- Menu 数据结构 ----------------
 class MenuItem:
@@ -739,6 +739,11 @@ class MenuDesigner(QWidget):
         self.setWindowTitle("MCU 菜单设计器 - U8G2 完整版")
         self.resize(1200,700)
         
+        # 添加按键防抖机制
+        from PySide6.QtCore import QTimer
+        self.key_debounce_timer = None
+        self.key_processing = False
+        
         # 应用现代化样式表
         self.apply_modern_style()
         
@@ -816,33 +821,29 @@ class MenuDesigner(QWidget):
         self.preview = MenuPreview()
         self.preview.setMinimumHeight(360)  # 进一步减小预览高度，为调试框留出更多空间
         preview_layout.addWidget(self.preview, 1)  # 使用拉伸因子1，让预览控件占用剩余空间
-        # 调试信息框 - 增加高度以显示10行调试信息
+        # 调试信息框 - 增大尺寸优化
         debug_group = QGroupBox("调试信息")
-        debug_group.setFixedHeight(230)  # 增加调试信息框高度以确保底部闭合
+        debug_group.setFixedHeight(300)  # 增大高度到300px
         debug_layout = QVBoxLayout(debug_group)
-        debug_layout.setSpacing(5)  # 调整间距确保布局正确
-        debug_layout.setContentsMargins(10, 10, 10, 10)  # 设置合适的边距确保闭合
+        debug_layout.setSpacing(0)  # 完全无间距
+        debug_layout.setContentsMargins(1, 1, 1, 1)  # 最小边距
+        debug_layout.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         
-        # 创建调试信息显示文本框 - 调整为显示10行
+        # 创建调试信息显示文本框 - 增大尺寸设计
         self.debug_text = QLabel("等待按键操作...")
         self.debug_text.setStyleSheet("""
             QLabel {
                 background-color: #2d2d2d;
                 color: #e0e0e0;
-                border: 1px solid #555555;
-                border-radius: 4px;
-                padding: 5px;
-                font-family: "Consolas", "Courier New", monospace;
-                font-size: 9pt;
-                line-height: 1.1;
+                border: 2px solid #555555;
+                border-radius: 0px;  # 完全直角
             }
         """)
         self.debug_text.setWordWrap(True)
-        self.debug_text.setMinimumHeight(200)  # 调整文本高度
-        self.debug_text.setMaximumHeight(200)  # 固定高度，确保显示一致
+        self.debug_text.setFixedHeight(285)  # 增大文本框高度到285px
         self.debug_text.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         debug_layout.addWidget(self.debug_text)
-        debug_layout.addStretch()  # 添加弹性空间确保底部闭合
+        # 确保完全闭合，无弹性空间
         
         preview_layout.addWidget(debug_group)
         
@@ -865,39 +866,35 @@ class MenuDesigner(QWidget):
         keys_layout.setSpacing(8)
         keys_layout.setContentsMargins(12, 12, 12, 12)
         
-        # 嵌入式风格四键布局 - 上方一个，下方三个
+        # Core key button layouts
         keys_grid_layout = QVBoxLayout()
         keys_grid_layout.setSpacing(10)
-        keys_grid_layout.setContentsMargins(5, 5, 5, 5)
         
-        # 上方一个按键（居中）
+        # Top row - centered up button
         top_row = QHBoxLayout()
-        top_row.setSpacing(0)
         top_row.addStretch()
         self.key_up_btn = QPushButton("↑")
         self.key_up_btn.setProperty("class", "key-btn")
-        self.key_up_btn.setFixedSize(50, 40)  # 稍大一些，作为主按键
+        self.key_up_btn.setFixedSize(50, 40)  # Main action button
         self.key_up_btn.setStyleSheet("""
-            QPushButton {
+QPushButton {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #4a4a4a, stop:1 #3a3a3a);
+    border: 2px solid #555555;
+    border-radius: 6px;
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: bold;
+    padding: 5px;
+}
+QPushButton:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #5a5a5a, stop:1 #4a4a4a);
+    border-color: #0078d4;
+}
+QPushButton:pressed {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #5a5a5a, stop:1 #3a3a3a);
-                border: 2px solid #2a2a2a;
-                border-radius: 5px;
-                color: #ffffff;
-                font-size: 18px;
-                font-weight: bold;
-                text-align: center;
-                padding: 0px;
-                margin: 0px;
-            }
-            QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #6a6a6a, stop:1 #4a4a4a);
-                border-color: #0078d4;
-            }
-            QPushButton:pressed {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #2a2a2a, stop:1 #1a1a1a);
+                    stop:0 #3a3a3a, stop:1 #2a2a2a);
                 border-color: #005a9e;
             }
         """)
@@ -906,34 +903,32 @@ class MenuDesigner(QWidget):
         
         # 下方三个按键（水平排列）
         bottom_row = QHBoxLayout()
-        bottom_row.setSpacing(15)
+        bottom_row.setSpacing(10)  # 减小按键间距
         bottom_row.addStretch()
         
         # 左键
         self.key_left_btn = QPushButton("←")
         self.key_left_btn.setProperty("class", "key-btn")
-        self.key_left_btn.setFixedSize(45, 35)  # 适中大小
+        self.key_left_btn.setFixedSize(50, 40)  # 统一大小
         self.key_left_btn.setStyleSheet("""
             QPushButton {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #5a5a5a, stop:1 #3a3a3a);
-                border: 2px solid #2a2a2a;
-                border-radius: 4px;
+                    stop:0 #4a4a4a, stop:1 #3a3a3a);
+                border: 2px solid #555555;
+                border-radius: 6px;
                 color: #ffffff;
-                font-size: 16px;
+                font-size: 18px;
                 font-weight: bold;
-                text-align: center;
-                padding: 0px;
-                margin: 0px;
+                padding: 5px;
             }
             QPushButton:hover {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #6a6a6a, stop:1 #4a4a4a);
+                    stop:0 #5a5a5a, stop:1 #4a4a4a);
                 border-color: #0078d4;
             }
             QPushButton:pressed {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #2a2a2a, stop:1 #1a1a1a);
+                    stop:0 #3a3a3a, stop:1 #2a2a2a);
                 border-color: #005a9e;
             }
         """)
@@ -942,64 +937,60 @@ class MenuDesigner(QWidget):
         # 下键
         self.key_down_btn = QPushButton("↓")
         self.key_down_btn.setProperty("class", "key-btn")
-        self.key_down_btn.setFixedSize(45, 35)  # 与左键相同
+        self.key_down_btn.setFixedSize(50, 40)  # 统一大小
         self.key_down_btn.setStyleSheet("""
             QPushButton {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #5a5a5a, stop:1 #3a3a3a);
-                border: 2px solid #2a2a2a;
-                border-radius: 4px;
+                    stop:0 #4a4a4a, stop:1 #3a3a3a);
+                border: 2px solid #555555;
+                border-radius: 6px;
                 color: #ffffff;
-                font-size: 16px;
+                font-size: 18px;
                 font-weight: bold;
-                text-align: center;
-                padding: 0px;
-                margin: 0px;
+                padding: 5px;
             }
             QPushButton:hover {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #6a6a6a, stop:1 #4a4a4a);
+                    stop:0 #5a5a5a, stop:1 #4a4a4a);
                 border-color: #0078d4;
             }
             QPushButton:pressed {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #2a2a2a, stop:1 #1a1a1a);
+                    stop:0 #3a3a3a, stop:1 #2a2a2a);
                 border-color: #005a9e;
             }
         """)
         bottom_row.addWidget(self.key_down_btn)
+        bottom_row.addStretch()  # 添加右侧弹性空间
         
         # 右键
         self.key_right_btn = QPushButton("→")
         self.key_right_btn.setProperty("class", "key-btn")
-        self.key_right_btn.setFixedSize(45, 35)  # 与其他键相同
+        self.key_right_btn.setFixedSize(50, 40)  # 统一大小
         self.key_right_btn.setStyleSheet("""
             QPushButton {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #5a5a5a, stop:1 #3a3a3a);
-                border: 2px solid #2a2a2a;
-                border-radius: 4px;
+                    stop:0 #4a4a4a, stop:1 #3a3a3a);
+                border: 2px solid #555555;
+                border-radius: 6px;
                 color: #ffffff;
-                font-size: 16px;
+                font-size: 18px;
                 font-weight: bold;
-                text-align: center;
-                padding: 0px;
-                margin: 0px;
+                padding: 5px;
             }
             QPushButton:hover {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #6a6a6a, stop:1 #4a4a4a);
+                    stop:0 #5a5a5a, stop:1 #4a4a4a);
                 border-color: #0078d4;
             }
             QPushButton:pressed {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #2a2a2a, stop:1 #1a1a1a);
+                    stop:0 #3a3a3a, stop:1 #2a2a2a);
                 border-color: #005a9e;
             }
         """)
         bottom_row.addWidget(self.key_right_btn)
-        
-        bottom_row.addStretch()
+        bottom_row.addStretch()  # 保持布局平衡
         
         # 将行添加到按键布局
         keys_grid_layout.addLayout(top_row)
@@ -1466,29 +1457,29 @@ class MenuDesigner(QWidget):
         from PySide6.QtWidgets import QColorDialog
         from PySide6.QtCore import Qt
         
+        # 设置合理的默认颜色
+        defaults = {
+            'bg': QColor(0, 64, 128),    # 深蓝色背景
+            'font': QColor(255, 255, 255), # 白色文字
+            'selected_bg': QColor(255, 255, 0), # 黄色选中背景
+            'selected_font': QColor(0, 0, 0)   # 黑色选中文字
+        }
+        
         # 获取当前颜色
         if color_type == 'bg':
-            current_color = QColor(0, 64, 128)  # 默认深蓝色
-            if hasattr(self.preview, 'bg_color'):
-                current_color = self.preview.bg_color
+            current_color = getattr(self.preview, 'bg_color', defaults[color_type])
             btn = self.bg_color_btn
             hex_input = self.bg_color_hex
         elif color_type == 'font':
-            current_color = Qt.white  # 默认白色
-            if hasattr(self.preview, 'fg_color'):
-                current_color = self.preview.fg_color
+            current_color = getattr(self.preview, 'fg_color', defaults[color_type])
             btn = self.font_color_btn
             hex_input = self.font_color_hex
         elif color_type == 'selected_bg':
-            current_color = Qt.white  # 默认白色
-            if hasattr(self.preview, 'selected_bg_color'):
-                current_color = self.preview.selected_bg_color
+            current_color = getattr(self.preview, 'selected_bg_color', defaults[color_type])
             btn = self.selected_bg_btn
             hex_input = self.selected_bg_hex
         elif color_type == 'selected_font':
-            current_color = Qt.black  # 默认黑色
-            if hasattr(self.preview, 'selected_fg_color'):
-                current_color = self.preview.selected_fg_color
+            current_color = getattr(self.preview, 'selected_fg_color', defaults[color_type])
             btn = self.selected_font_btn
             hex_input = self.selected_font_hex
         else:
@@ -1498,13 +1489,41 @@ class MenuDesigner(QWidget):
         color = QColorDialog.getColor(current_color, self, f"选择{color_type}颜色")
         if color.isValid():
             # 更新按钮颜色
-            btn.setStyleSheet(f"background-color: {color.name()}; color: {'white' if color.lightness() < 128 else 'black'};")
-            
+            text_color = 'white' if color.lightness() < 128 else 'black'
+            btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {color.name()};
+                    color: {text_color};
+                    border: 2px solid #555555;
+                    border-radius: 6px;
+                    padding: 8px 16px;
+                }}
+                QPushButton:hover {{
+                    border-color: #0078d4;
+                }}
+                QPushButton:pressed {{
+                    background-color: {color.darker(120).name()};
+                }}
+            """)
+
             # 更新HEX输入框
             hex_input.setText(color.name().upper())
+
+            # 根据选择的颜色类型更新预览控件
+            if color_type == 'bg':
+                self.preview.bg_color = color
+            elif color_type == 'font':
+                self.preview.fg_color = color
+            elif color_type == 'selected_bg':
+                self.preview.selected_bg_color = color
+            elif color_type == 'selected_font':
+                self.preview.selected_fg_color = color
             
-            # 更新预览
-            self.on_screen_config_changed()
+            # 重新渲染预览
+            self.preview.render_menu()
+            
+            # 重新渲染预览
+            self.preview.render_menu()
     
     def on_hex_color_changed(self):
         """处理HEX颜色输入变化"""
@@ -1877,92 +1896,175 @@ class MenuDesigner(QWidget):
             self.refresh_tree()
             self.preview.render_menu()
 
-    # ---------------- 菜单导航 ----------------
-    def on_key(self,key):
-        debug_info = ""
-        timestamp = f"[{QTime.currentTime().toString('hh:mm:ss')}]"
-        
-        # 处理右键按下 - 进入子菜单或执行
-        if key == "Right":
-            visible = [c for c in self.preview.menu_root.children if c.visible]
-            if self.preview.cursor_index < len(visible):
-                node = visible[self.preview.cursor_index]
-                if node.is_exec:
-                    # 执行项
-                    debug_info = f"{timestamp} 按键: Right → 执行回调函数: {node.callback_name or '(未命名)'}"
-                    print(debug_info)
-                elif node.children and len(node.children) > 0:
-                    # 进入子菜单
-                    self.preview.menu_root = node
-                    self.preview.cursor_index = 0  # 重置到第一项
-                    debug_info = f"{timestamp} 按键: Right → 进入子菜单: {node.name} (包含{len(node.children)}个子项)"
-                    print(debug_info)
-                else:
-                    debug_info = f"{timestamp} 按键: Right → 该菜单项[{node.name}]没有子菜单"
-                    print(debug_info)
-        # 处理左键按下 - 返回上级菜单
-        elif key == "Left":
-            if self.preview.menu_root.parent:
-                # 保存当前菜单项的位置
-                current_root = self.preview.menu_root
-                current_root.cursor_pos = self.preview.cursor_index
-                
-                # 返回上级菜单
-                self.preview.menu_root = self.preview.menu_root.parent
-                
-                # 在父菜单中找到当前子菜单的位置
-                parent_visible = [c for c in self.preview.menu_root.children if c.visible]
-                for i, child in enumerate(parent_visible):
-                    if child == current_root:
-                        self.preview.cursor_index = i
-                        break
-                else:
-                    self.preview.cursor_index = 0
-                debug_info = f"{timestamp} 按键: Left → 返回上级菜单: {self.preview.menu_root.name}"
-                print(debug_info)
-            else:
-                debug_info = f"{timestamp} 按键: Left → 已在根菜单，无法返回"
-                print(debug_info)
-        # 处理上下键 - 导航菜单项
-        else:
-            visible = [c for c in self.preview.menu_root.children if c.visible]
-            current_item_name = visible[self.preview.cursor_index].name if self.preview.cursor_index < len(visible) else "未知"
+    def on_key(self, key):
+        # 防抖处理：如果正在处理按键，则忽略新的按键
+        if self.key_processing:
+            return
             
-            if key == "Up":
-                old_index = self.preview.cursor_index
-                self.preview.cursor_index = max(0, self.preview.cursor_index - 1)
-                new_item_name = visible[self.preview.cursor_index].name if self.preview.cursor_index < len(visible) else "未知"
-                debug_info = f"{timestamp} 按键: Up → 从[{current_item_name}]({old_index}) 移动到 [{new_item_name}]({self.preview.cursor_index})"
-            elif key == "Down":
-                old_index = self.preview.cursor_index
-                self.preview.cursor_index = min(len(visible) - 1, self.preview.cursor_index + 1)
-                new_item_name = visible[self.preview.cursor_index].name if self.preview.cursor_index < len(visible) else "未知"
-                debug_info = f"{timestamp} 按键: Down → 从[{current_item_name}]({old_index}) 移动到 [{new_item_name}]({self.preview.cursor_index})"
+        # 如果已有防抖定时器，则停止它
+        if self.key_debounce_timer:
+            self.key_debounce_timer.stop()
+            
+        # 设置处理标志
+        self.key_processing = True
+        
+        # 使用定时器延迟处理按键，防止快速按键导致的状态混乱
+        self.key_debounce_timer = QTimer.singleShot(50, lambda: self._process_key(key))
+    
+    def _process_key(self, key):
+        """实际处理按键的函数"""
+        try:
+            timestamp = f"[{QTime.currentTime().toString('hh:mm:ss')}]"
+            debug_info = ""
+            
+            # 处理右键按下 - 进入子菜单或执行
+            if key == "Right":
+                visible = [c for c in self.preview.menu_root.children if c.visible]
+                if 0 <= self.preview.cursor_index < len(visible):
+                    node = visible[self.preview.cursor_index]
+                    if node.is_exec:
+                        # 执行项
+                        debug_info = f"{timestamp} 按键: Right → 执行回调函数: {node.callback_name or '(未命名)'}"
+                        # 实际执行回调函数
+                        if node.callback_name:
+                            # 查找并执行回调函数
+                            if hasattr(self, node.callback_name) and callable(getattr(self, node.callback_name)):
+                                getattr(self, node.callback_name)()
+                            else:
+                                debug_info += f" (警告: 回调函数 {node.callback_name} 未定义)"
+                    elif node.children and len(node.children) > 0:
+                        # 进入子菜单 - 先更新状态，再生成调试信息
+                        old_menu = self.preview.menu_root.name
+                        self.preview.menu_root = node
+                        self.preview.cursor_index = 0  # 重置到第一项
+                        debug_info = f"{timestamp} 按键: Right → 进入子菜单: {node.name} (包含{len(node.children)}个子项)"
+                    else:
+                        debug_info = f"{timestamp} 按键: Right → 该菜单项[{node.name}]没有子菜单"
+                else:
+                    debug_info = f"{timestamp} 按键: Right → 无效位置"
+            
+            # 处理左键按下 - 返回上级菜单
+            elif key == "Left":
+                if self.preview.menu_root.parent:
+                    # 保存当前菜单项的位置
+                    current_root = self.preview.menu_root
+                    current_root.cursor_pos = self.preview.cursor_index
+                    
+                    # 返回上级菜单 - 先更新状态，再生成调试信息
+                    old_menu = self.preview.menu_root.name
+                    self.preview.menu_root = self.preview.menu_root.parent
+                    
+                    # 在父菜单中找到当前子菜单的位置
+                    parent_visible = [c for c in self.preview.menu_root.children if c.visible]
+                    for i, child in enumerate(parent_visible):
+                        if child == current_root:
+                            # 尝试恢复之前保存的位置
+                            if hasattr(child, 'cursor_pos'):
+                                self.preview.cursor_index = min(child.cursor_pos, len(parent_visible) - 1)
+                            else:
+                                self.preview.cursor_index = i
+                            break
+                    else:
+                        self.preview.cursor_index = 0
+                    
+                    new_item_name = parent_visible[self.preview.cursor_index].name if 0 <= self.preview.cursor_index < len(parent_visible) else "未知"
+                    debug_info = f"{timestamp} 按键: Left → 返回上级菜单: {self.preview.menu_root.name} (当前位置: {new_item_name})"
+                else:
+                    debug_info = f"{timestamp} 按键: Left → 已在根菜单，无法返回"
+            
+            # 处理上下键 - 导航菜单项
+            elif key in ["Up", "Down"]:
+                visible = [c for c in self.preview.menu_root.children if c.visible]
+                
+                # 检查是否有可见菜单项
+                if not visible:
+                    debug_info = f"{timestamp} 按键: {key} → 没有可见菜单项"
+                else:
+                    # 确保cursor_index在有效范围内
+                    if self.preview.cursor_index < 0:
+                        self.preview.cursor_index = 0
+                    elif self.preview.cursor_index >= len(visible):
+                        self.preview.cursor_index = len(visible) - 1
+                    
+                    # 获取当前菜单项名称
+                    old_index = self.preview.cursor_index
+                    old_item_name = visible[old_index].name if 0 <= old_index < len(visible) else "未知"
+                    
+                    # 处理按键
+                    if key == "Up":
+                        # 检查是否已经在第一项
+                        if old_index == 0:
+                            # 已经在第一项，无法上移
+                            debug_info = f"{timestamp} 按键: {key} → 已在第一项 [{old_item_name}]，无法上移"
+                        else:
+                            # 可以上移，先更新状态，再生成调试信息
+                            new_index = old_index - 1
+                            self.preview.cursor_index = new_index
+                            new_item_name = visible[new_index].name if 0 <= new_index < len(visible) else "未知"
+                            debug_info = f"{timestamp} 按键: {key} → 从[{old_item_name}]({old_index}) 移动到 [{new_item_name}]({new_index})"
+                    elif key == "Down":
+                        # 检查是否已经在最后一项
+                        if old_index == len(visible) - 1:
+                            # 已经在最后一项，无法下移
+                            debug_info = f"{timestamp} 按键: {key} → 已在最后一项 [{old_item_name}]，无法下移"
+                        else:
+                            # 可以下移，先更新状态，再生成调试信息
+                            new_index = old_index + 1
+                            self.preview.cursor_index = new_index
+                            new_item_name = visible[new_index].name if 0 <= new_index < len(visible) else "未知"
+                            debug_info = f"{timestamp} 按键: {key} → 从[{old_item_name}]({old_index}) 移动到 [{new_item_name}]({new_index})"
+                    
+                    # 保存当前菜单项的位置
+                    self.preview.menu_root.cursor_pos = self.preview.cursor_index
             else:
                 debug_info = f"{timestamp} 按键: {key} → 未知按键"
             
-            # 保存当前菜单项的位置
-            self.preview.menu_root.cursor_pos = self.preview.cursor_index
+            # 打印调试信息 - 在所有状态更新后
             print(debug_info)
-        
-        # 更新调试信息显示
-        if hasattr(self, 'debug_text') and debug_info:
-            # 获取当前调试信息
-            current_text = self.debug_text.text()
-            if current_text == "等待按键操作...":
-                new_text = debug_info
-            else:
-                # 保留最近的10条记录
-                lines = current_text.split('\n')
-                lines.append(debug_info)
-                if len(lines) > 10:
-                    lines = lines[-10:]
-                new_text = '\n'.join(lines)
             
-            self.debug_text.setText(new_text)
-        
-        # 重新渲染菜单
-        self.preview.render_menu()
+            # 更新调试信息显示
+            if hasattr(self, 'debug_text') and debug_info:
+                # 获取当前调试信息
+                current_text = self.debug_text.text()
+                if current_text == "等待按键操作...":
+                    new_text = debug_info
+                else:
+                    # 保留最近的20条记录
+                    lines = current_text.split('\n')
+                    lines.append(debug_info)
+                    if len(lines) > 20:
+                        lines = lines[-20:]
+                    new_text = '\n'.join(lines)
+                
+                self.debug_text.setText(new_text)
+            
+            # 重新渲染菜单 - 在所有状态更新和调试信息更新后
+            self.preview.render_menu()
+            
+        except Exception as e:
+            # 捕获异常，防止按键处理崩溃
+            timestamp = f"[{QTime.currentTime().toString('hh:mm:ss')}]"
+            error_msg = f"{timestamp} 按键处理错误: {str(e)}"
+            print(error_msg)
+            
+            # 即使出错也要更新调试信息
+            if hasattr(self, 'debug_text'):
+                # 获取当前调试信息
+                current_text = self.debug_text.text()
+                if current_text == "等待按键操作...":
+                    new_text = error_msg
+                else:
+                    # 保留最近的20条记录
+                    lines = current_text.split('\n')
+                    lines.append(error_msg)
+                    if len(lines) > 20:
+                        lines = lines[-20:]
+                    new_text = '\n'.join(lines)
+                
+                self.debug_text.setText(new_text)
+        finally:
+            # 重置处理标志
+            self.key_processing = False
 
     def apply_modern_style(self):
         """应用现代化样式表"""
