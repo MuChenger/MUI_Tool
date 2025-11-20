@@ -1,8 +1,8 @@
 # mcu_menu_designer_u8g2_final_complete.py
-from PySide6.QtWidgets import (QApplication, QWidget, QTreeWidget, QTreeWidgetItem,
-                               QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
-                               QLineEdit, QFileDialog, QGroupBox, QComboBox)
-from PySide6.QtGui import QPainter, QPixmap, QColor, QFont
+from PySide6.QtWidgets import (QApplication, QWidget, QTreeWidget, QTreeWidgetItem, QTextEdit,
+    QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
+    QLineEdit, QFileDialog, QGroupBox, QComboBox)
+from PySide6.QtGui import (QTextOption, QPainter, QPixmap, QColor, QFont)
 from PySide6.QtCore import Qt, QTime, QTimer
 
 # ---------------- Menu 数据结构 ----------------
@@ -830,19 +830,59 @@ class MenuDesigner(QWidget):
         debug_layout.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         
         # 创建调试信息显示文本框 - 增大尺寸设计
-        self.debug_text = QLabel("等待按键操作...")
+        import sys
+        from io import StringIO
+
+        class DebugStreamRedirector(StringIO):
+            def __init__(self, text_widget):
+                super().__init__()
+                self.text_widget = text_widget
+                self.original_stdout = sys.stdout
+                self.original_stderr = sys.stderr
+
+            def write(self, message):
+                # 保留原始输出
+                self.original_stdout.write(message)
+                self.original_stderr.write(message)
+
+                # 更新调试窗口
+                current_text = self.text_widget.toPlainText()
+                if current_text == "等待按键操作...":
+                    new_text = message.strip()
+                else:
+                    lines = current_text.split('\n')
+                    lines.insert(0, message.strip())
+                    if len(lines) > 20:
+                        lines = lines[:20]
+                    new_text = '\n'.join(lines)
+                self.text_widget.setPlainText(new_text)
+
+            def flush(self):
+                self.original_stdout.flush()
+                self.original_stderr.flush()
+
+        self.debug_text = QTextEdit("等待按键操作...")
         self.debug_text.setStyleSheet("""
-            QLabel {
+            QTextEdit {
                 background-color: #2d2d2d;
                 color: #e0e0e0;
                 border: 2px solid #555555;
-                border-radius: 0px;  # 完全直角
+                border-radius: 0px;
+                padding: 5px;
+                font-family: 'Consolas', 'Courier New', monospace;
+                font-size: 9pt;
             }
         """)
-        self.debug_text.setWordWrap(True)
-        self.debug_text.setFixedHeight(285)  # 增大文本框高度到285px
+        self.debug_text.setReadOnly(True)
+        self.debug_text.setWordWrapMode(QTextOption.WrapAtWordBoundaryOrAnywhere)
+        self.debug_text.setFixedHeight(285)
         self.debug_text.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         debug_layout.addWidget(self.debug_text)
+
+        # 设置标准输出重定向
+        self.stdout_redirector = DebugStreamRedirector(self.debug_text)
+        sys.stdout = self.stdout_redirector
+        sys.stderr = self.stdout_redirector
         # 确保完全闭合，无弹性空间
         
         preview_layout.addWidget(debug_group)
@@ -2025,7 +2065,7 @@ QPushButton:pressed {
             # 更新调试信息显示
             if hasattr(self, 'debug_text') and debug_info:
                 # 获取当前调试信息
-                current_text = self.debug_text.text()
+                current_text = self.debug_text.toPlainText()
                 if current_text == "等待按键操作...":
                     new_text = debug_info
                 else:
@@ -2036,7 +2076,7 @@ QPushButton:pressed {
                         lines = lines[-20:]
                     new_text = '\n'.join(lines)
                 
-                self.debug_text.setText(new_text)
+                
             
             # 重新渲染菜单 - 在所有状态更新和调试信息更新后
             self.preview.render_menu()
@@ -2050,7 +2090,7 @@ QPushButton:pressed {
             # 即使出错也要更新调试信息
             if hasattr(self, 'debug_text'):
                 # 获取当前调试信息
-                current_text = self.debug_text.text()
+                current_text = self.debug_text.toPlainText()
                 if current_text == "等待按键操作...":
                     new_text = error_msg
                 else:
@@ -2061,7 +2101,7 @@ QPushButton:pressed {
                         lines = lines[-20:]
                     new_text = '\n'.join(lines)
                 
-                self.debug_text.setText(new_text)
+                
         finally:
             # 重置处理标志
             self.key_processing = False
