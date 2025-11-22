@@ -1,6 +1,6 @@
 {
   "screen_type": "TFT",
-  "color_mode": "真彩色",
+  "color_mode": "16色",
   "font_size": "大(16px)",
   "preview_size": "实际大小",
   "bg_color": "#00AAFF",
@@ -14,7 +14,7 @@
     "is_exec": false,
     "visible": true,
     "callback_name": "",
-    "cursor_pos": 0,
+    "cursor_pos": 7,
     "children": [
       {
         "name": "系统设置",

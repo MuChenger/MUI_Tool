@@ -789,18 +789,58 @@ class MenuDesigner(QWidget):
 
         # === 左侧：菜单树 ===
         left_widget = QWidget()
-        left_widget.setMaximumWidth(250)  # 限制左侧宽度
+        left_widget.setMinimumWidth(280)
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(10)  # 增加内部间距
         left_layout.setContentsMargins(0, 0, 0, 0)
         
+        # 面包屑与搜索行
+        self.menu_breadcrumb = QLabel("根菜单")
+        self.menu_breadcrumb.setStyleSheet("background:#1f1f1f; color:#a8e1ff; border:1px solid #303030; border-radius:6px; padding:6px 10px; font-weight:600;")
+        left_layout.addWidget(self.menu_breadcrumb)
+
+        search_row = QHBoxLayout()
+        self.menu_search_edit = QLineEdit()
+        self.menu_search_edit.setPlaceholderText("搜索菜单项")
+        search_row.addWidget(self.menu_search_edit)
+        self.menu_expand_btn = QPushButton("展开")
+        self.menu_collapse_btn = QPushButton("折叠")
+        self.menu_expand_btn.setFixedWidth(56)
+        self.menu_collapse_btn.setFixedWidth(56)
+        search_row.addWidget(self.menu_expand_btn)
+        search_row.addWidget(self.menu_collapse_btn)
+        left_layout.addLayout(search_row)
+
         self.tree = QTreeWidget()
-        self.tree.setHeaderLabel("菜单结构")
+        self.tree.setColumnCount(2)
+        self.tree.setHeaderLabels(["名称", "信息"])
         self.tree.itemClicked.connect(self.on_tree_select)
         self.tree.setMinimumHeight(400)  # 设置最小高度
+        self.tree.setAlternatingRowColors(True)
+        self.tree.setIndentation(14)
+        self.tree.setAnimated(True)
+        self.tree.setExpandsOnDoubleClick(True)
+        self.tree.setStyleSheet("QTreeWidget { background:#1f1f1f; color:#e6e6e6; border:1px solid #303030; outline:none; }\n"
+                               "QTreeWidget::item { padding:6px 10px; height:26px; border-bottom:1px solid #2a2a2a; }\n"
+                               "QTreeWidget::item:hover { background:#2a2a2a; }\n"
+                               "QTreeWidget::item:selected { background:#2b2f3a; color:#ffffff; border-left:3px solid #3DA9FC; font-weight:600; }\n"
+                               "QTreeWidget::header { background:#1e1e1e; color:#a0a0a0; border:none; padding:6px 10px; }")
+        from PySide6.QtWidgets import QHeaderView
+        hdr = self.tree.header()
+        hdr.setStretchLastSection(True)
+        hdr.setSectionResizeMode(0, QHeaderView.Stretch)
+        hdr.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        self.tree.setContextMenuPolicy(Qt.CustomContextMenu)
         self.refresh_tree()
         left_layout.addWidget(self.tree)
+        self.tree.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.tree.customContextMenuRequested.connect(self._on_tree_context_menu)
         left_layout.addStretch()
+
+        # 连接搜索与展开折叠
+        self.menu_search_edit.textChanged.connect(self.filter_menu_tree)
+        self.menu_expand_btn.clicked.connect(lambda: self.tree.expandAll())
+        self.menu_collapse_btn.clicked.connect(lambda: self.tree.collapseAll())
         
         main_layout.addWidget(left_widget, 0)  # 左侧固定宽度
 
@@ -1512,8 +1552,48 @@ QPushButton:pressed {
                     if child.title() == "颜色配置 (TFT模式)":
                         child.setVisible(show)
                         break
-    
+        
     # ---------------- 颜色选择器方法 ----------------
+    def filter_menu_tree(self):
+        query = self.menu_search_edit.text().strip().lower() if hasattr(self, 'menu_search_edit') else ""
+        def recurse(item):
+            from PySide6.QtGui import QFont, QBrush
+            match = (query in item.text(0).lower()) if query else True
+            child_visible = False
+            for i in range(item.childCount()):
+                c = item.child(i)
+                child_vis = recurse(c)
+                child_visible = child_visible or child_vis
+            visible = match or child_visible
+            item.setHidden(not visible)
+            f = item.font(0)
+            f.setBold(match and query != "")
+            item.setFont(0, f)
+            item.setForeground(0, QBrush(QColor("#3DA9FC" if match and query != "" else "#e6e6e6")))
+            return visible
+        for i in range(self.tree.topLevelItemCount()):
+            recurse(self.tree.topLevelItem(i))
+        self.tree.expandAll()
+
+    def _on_tree_context_menu(self, pos):
+        from PySide6.QtWidgets import QMenu
+        item = self.tree.itemAt(pos)
+        menu = QMenu(self)
+        act_add = menu.addAction("添加子菜单")
+        act_del = menu.addAction("删除")
+        act_rename = menu.addAction("重命名")
+        act_toggle_exec = menu.addAction("切换执行/子菜单")
+        chosen = menu.exec(self.tree.viewport().mapToGlobal(pos))
+        if not chosen:
+            return
+        if chosen == act_add:
+            self.add_menu()
+        elif chosen == act_del:
+            self.del_menu()
+        elif chosen == act_rename and item:
+            self.tree.editItem(item, 0)
+        elif chosen == act_toggle_exec:
+            self.toggle_exec()
     def choose_color(self, color_type):
         """打开颜色选择器"""
         from PySide6.QtWidgets import QColorDialog
@@ -1877,9 +1957,29 @@ QPushButton:pressed {
     # ---------------- Tree操作 ----------------
     def refresh_tree(self):
         self.tree.clear()
+        from PySide6.QtGui import QIcon, QPixmap, QPainter
+        def make_dot(color_hex):
+            pm = QPixmap(14,14)
+            pm.fill(Qt.transparent)
+            p = QPainter(pm)
+            p.setRenderHint(QPainter.Antialiasing, True)
+            p.setBrush(QColor(color_hex))
+            p.setPen(Qt.NoPen)
+            p.drawEllipse(2,2,10,10)
+            p.end()
+            return QIcon(pm)
+        icon_exec = make_dot("#FFD54F")
+        icon_folder = make_dot("#3DA9FC")
         def add_items(parent, node):
-            twi = QTreeWidgetItem([node.name])
+            label = node.name if not node.children else f"{node.name} ({len(node.children)})"
+            info = (f"执行" + (f" · {node.callback_name}" if node.callback_name else "")) if node.is_exec else f"子菜单 {len(node.children)}"
+            twi = QTreeWidgetItem([label, info])
             twi.setData(0, Qt.UserRole, node)
+            twi.setToolTip(0, label)
+            twi.setToolTip(1, info)
+            twi.setIcon(0, icon_exec if node.is_exec else icon_folder)
+            from PySide6.QtGui import QBrush
+            twi.setForeground(1, QBrush(QColor("#FFD54F" if node.is_exec else "#3DA9FC")))
             if parent:
                 parent.addChild(twi)
             else:
@@ -1892,6 +1992,13 @@ QPushButton:pressed {
     def on_tree_select(self,item):
         node = item.data(0, Qt.UserRole)
         self.current_node = node
+        # 更新面包屑
+        path_names = []
+        p = node
+        while p:
+            path_names.insert(0, p.name)
+            p = p.parent
+        self.menu_breadcrumb.setText(" / ".join(path_names))
         
         # 显示属性编辑区域
         self.properties_widget.setVisible(True)
