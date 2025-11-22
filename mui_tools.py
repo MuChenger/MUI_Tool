@@ -100,11 +100,10 @@ class MenuPreview(QWidget):
         # 设置预览窗口大小
         self.setFixedSize(frame_width, frame_height)
 
-    def set_screen_type(self, screen_type, color_mode="单色", font_size="小(8px)", 
+    def set_screen_type(self, screen_type, font_size="小(8px)", 
                         font_color="白色", bg_color="深蓝色", selected_bg="白色", selected_font="黑色"):
         """设置屏幕类型和相关参数"""
         self.screen_type = screen_type
-        self.color_mode = color_mode
         
         # 根据屏幕类型调整参数 - 不再硬编码尺寸，使用当前设置
         if screen_type == "OLED":
@@ -830,6 +829,8 @@ class MenuDesigner(QWidget):
         hdr.setStretchLastSection(True)
         hdr.setSectionResizeMode(0, QHeaderView.Stretch)
         hdr.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        self.tree.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.tree.setUniformRowHeights(True)
         self.tree.setContextMenuPolicy(Qt.CustomContextMenu)
         self.refresh_tree()
         left_layout.addWidget(self.tree)
@@ -1245,14 +1246,7 @@ QPushButton:pressed {
         display_layout.setSpacing(8)
         display_layout.setContentsMargins(10, 10, 10, 10)
         
-        # 颜色模式选择
-        color_mode_layout = QHBoxLayout()
-        color_mode_layout.addWidget(QLabel("颜色模式:"))
-        self.color_mode_combo = QComboBox()
-        self.color_mode_combo.addItems(["单色", "16色", "256色", "真彩色"])
-        self.color_mode_combo.currentTextChanged.connect(self.on_screen_config_changed)
-        color_mode_layout.addWidget(self.color_mode_combo)
-        color_mode_layout.addStretch()
+        # 颜色模式选项已移除
         
         # 字体大小选择
         font_size_layout = QHBoxLayout()
@@ -1263,6 +1257,13 @@ QPushButton:pressed {
         self.font_size_combo.currentTextChanged.connect(self.on_screen_config_changed)
         font_size_layout.addWidget(self.font_size_combo)
         font_size_layout.addStretch()
+        font_family_layout = QHBoxLayout()
+        font_family_layout.addWidget(QLabel("默认字体:"))
+        self.default_font_combo = QComboBox()
+        self.default_font_combo.addItems(["Segoe UI","Arial","Times New Roman","Courier New","Microsoft YaHei","SimSun","SimHei","KaiTi"]) 
+        self.default_font_combo.setCurrentText("Segoe UI")
+        font_family_layout.addWidget(self.default_font_combo)
+        font_family_layout.addStretch()
         
         # 预览窗口大小设置
         preview_size_layout = QHBoxLayout()
@@ -1274,8 +1275,9 @@ QPushButton:pressed {
         preview_size_layout.addWidget(self.preview_size_combo)
         preview_size_layout.addStretch()
         
-        display_layout.addLayout(color_mode_layout)
+        # 移除颜色模式布局
         display_layout.addLayout(font_size_layout)
+        display_layout.addLayout(font_family_layout)
         display_layout.addLayout(preview_size_layout)
         
         # 颜色配置组（仅TFT模式）
@@ -1382,7 +1384,6 @@ QPushButton:pressed {
         self.preview.preview_size_combo = self.preview_size_combo
         self.preview.set_screen_type(
             self.screen_type_combo.currentText(),
-            self.color_mode_combo.currentText(),
             self.font_size_combo.currentText()
         )
         self.preview.menu_root = self.menu_root
@@ -1390,56 +1391,38 @@ QPushButton:pressed {
         
         # 连接屏幕类型切换信号，用于动态显示/隐藏颜色配置
         self.screen_type_combo.currentTextChanged.connect(self.on_screen_type_changed)
+        # 初始化一次颜色配置可见性
+        self.on_screen_type_changed()
         
-        # 初始状态：如果不是TFT模式，隐藏颜色配置
-        if self.screen_type_combo.currentText() == "OLED":
-            self.color_group.setVisible(False)
+        # 初始状态：保持颜色配置可见，由模式切换逻辑统一控制
 
     # ---------------- 配置处理方法 ----------------
     def on_screen_type_changed(self):
         """屏幕类型改变时更新配置，保存当前设置"""
         screen_type = self.screen_type_combo.currentText()
         
-        # 保存当前设置
+        # 保存当前设置（移除颜色模式）
         self.current_settings = {
             'font_size': self.font_size_combo.currentText(),
-            'color_mode': self.color_mode_combo.currentText(),
             'preview_size': self.preview_size_combo.currentText()
         }
         
         # 根据屏幕类型显示或隐藏颜色配置
         if hasattr(self, 'color_group'):
             if screen_type == "OLED":
-                # OLED模式：隐藏颜色配置
                 self.color_group.setVisible(False)
+                self.color_group.setEnabled(False)
             else:
-                # TFT模式：显示颜色配置
                 self.color_group.setVisible(True)
+                self.color_group.setEnabled(True)
+                try:
+                    self.color_group.show()
+                    self.color_group.update()
+                except:
+                    pass
         
         # 根据屏幕类型设置默认参数，但保留用户的自定义设置
-        if screen_type == "OLED":
-            # OLED模式：使用保存的设置或默认值
-            if self.color_mode_combo.currentText() in ["16色", "256色", "真彩色"]:
-                # 如果当前是TFT专用的颜色模式，则切换为OLED兼容的模式
-                self.color_mode_combo.setCurrentText("单色")
-            else:
-                # 保留用户的颜色设置（如果兼容OLED）
-                pass
-            
-            # 保留用户的字体大小设置，不强制切换
-            # self.font_size_combo.setCurrentText("小(8px)")  # 注释掉强制设置
-            
-        elif screen_type == "TFT":
-            # TFT模式：使用保存的设置或默认值
-            if self.color_mode_combo.currentText() == "单色":
-                # 如果当前是单色模式，则切换为TFT推荐的颜色模式
-                self.color_mode_combo.setCurrentText("16色")
-            else:
-                # 保留用户的颜色设置
-                pass
-            
-            # 保留用户的字体大小设置，不强制切换
-            # self.font_size_combo.setCurrentText("中(12px)")  # 注释掉强制设置
+        # 颜色模式选项已移除，不做颜色模式切换
         
         # 更新预览
         self.on_screen_config_changed()
@@ -1468,7 +1451,6 @@ QPushButton:pressed {
         # 传递所有颜色参数
         self.preview.set_screen_type(
             self.screen_type_combo.currentText(),
-            self.color_mode_combo.currentText(),
             self.font_size_combo.currentText(),
             font_color,
             bg_color,
@@ -1496,7 +1478,7 @@ QPushButton:pressed {
             
             # 更新预览控件的屏幕尺寸
             screen_type = self.screen_type_combo.currentText()
-            color_mode = self.color_mode_combo.currentText()
+            # 已移除颜色模式选项
             font_size = self.font_size_combo.currentText()
             
             # 更新预览屏幕尺寸
@@ -1506,18 +1488,27 @@ QPushButton:pressed {
             # 重新创建framebuffer
             self.preview.framebuffer = QPixmap(width, height)
             
-            # 根据屏幕类型设置颜色
+            # 保留现有颜色设置，避免在TFT模式下清除用户选择
             if "OLED" in screen_type:
-                # OLED模式：使用固定的蓝底黄色字体
-                self.preview.bg_color = QColor(0, 0, 128)  # 蓝色背景
-                self.preview.fg_color = QColor(255, 255, 0)  # 黄色字体
-                self.preview.selected_bg_color = QColor(255, 255, 0)  # 黄色选中背景
-                self.preview.selected_fg_color = QColor(0, 0, 128)  # 蓝色选中字体
-            else:  # TFT
-                self.preview.bg_color = QColor(0, 64, 128)  # 深蓝色
-                self.preview.fg_color = Qt.white
-                self.preview.selected_bg_color = QColor(255, 255, 255)
-                self.preview.selected_fg_color = Qt.black
+                # OLED：不重置颜色，沿用当前设置
+                pass
+            else:
+                # TFT：从HEX输入框读取颜色（若有效），否则保持现有值
+                def pick_hex(text, fallback):
+                    try:
+                        s = text.strip()
+                        c = QColor(s)
+                        return c if s.startswith('#') and c.isValid() else fallback
+                    except:
+                        return fallback
+                if hasattr(self, 'bg_color_hex'):
+                    self.preview.bg_color = pick_hex(self.bg_color_hex.text(), getattr(self.preview, 'bg_color', QColor(0,64,128)))
+                if hasattr(self, 'font_color_hex'):
+                    self.preview.fg_color = pick_hex(self.font_color_hex.text(), getattr(self.preview, 'fg_color', Qt.white))
+                if hasattr(self, 'selected_bg_hex'):
+                    self.preview.selected_bg_color = pick_hex(self.selected_bg_hex.text(), getattr(self.preview, 'selected_bg_color', QColor(255,255,255)))
+                if hasattr(self, 'selected_font_hex'):
+                    self.preview.selected_fg_color = pick_hex(self.selected_font_hex.text(), getattr(self.preview, 'selected_fg_color', Qt.black))
             
             self.preview.framebuffer.fill(self.preview.bg_color)
             
@@ -1551,7 +1542,60 @@ QPushButton:pressed {
                 for child in config_tab.findChildren(QGroupBox):
                     if child.title() == "颜色配置 (TFT模式)":
                         child.setVisible(show)
-                        break
+
+    def _parse_font_px(self):
+        try:
+            txt = self.font_size_combo.currentText()
+            import re
+            m = re.search(r"\((\d+)px\)", txt)
+            return int(m.group(1)) if m else 12
+        except:
+            return 12
+
+    def _render_glyph_bitmap(self, ch, family, px):
+        from PySide6.QtGui import QImage, QFont
+        img = QImage(px*2, px*2, QImage.Format_ARGB32)
+        img.fill(Qt.black)
+        f = QFont(family, px)
+        p = QPainter(img)
+        p.setPen(Qt.white)
+        p.setFont(f)
+        p.drawText(0, px, ch)
+        p.end()
+        w = min(img.width(), px*2)
+        h = min(img.height(), px)
+        data = []
+        for y in range(h):
+            byte = 0
+            bit_count = 0
+            for x in range(w):
+                c = QColor(img.pixel(x,y))
+                v = 1 if (c.red()+c.green()+c.blue())//3 > 128 else 0
+                byte = (byte<<1) | v
+                bit_count += 1
+                if bit_count == 8:
+                    data.append(byte)
+                    byte = 0
+                    bit_count = 0
+            if bit_count:
+                data.append(byte << (8-bit_count))
+        return w, h, data
+
+    def _emit_ascii_font_array(self):
+        family = self.default_font_combo.currentText() if hasattr(self, 'default_font_combo') else 'Segoe UI'
+        px = self._parse_font_px()
+        lines = []
+        lines.append("")
+        lines.append(f"const uint8_t ascii_font_{px}[] = {{")
+        for code in range(32,127):
+            ch = chr(code)
+            w,h,buf = self._render_glyph_bitmap(ch, family, px)
+            lines.append(f"    /* {code} '{ch}' {w}x{h} */")
+            for i in range(0,len(buf),16):
+                part = ", ".join(f"0x{b:02X}" for b in buf[i:i+16])
+                lines.append(f"    {part},")
+        lines.append("};")
+        return lines
         
     # ---------------- 颜色选择器方法 ----------------
     def filter_menu_tree(self):
@@ -1706,7 +1750,6 @@ QPushButton:pressed {
         
         settings = {
             'screen_type': self.screen_type_combo.currentText(),
-            'color_mode': self.color_mode_combo.currentText(),
             'font_size': self.font_size_combo.currentText(),
             'preview_size': self.preview_size_combo.currentText(),
             'bg_color': self.bg_color_hex.text().strip() if hasattr(self, 'bg_color_hex') else "#004080",
@@ -1767,12 +1810,7 @@ QPushButton:pressed {
                                 self.screen_type_combo.blockSignals(False)
                                 print(f"设置屏幕类型: {self.current_settings['screen_type']}")
                             
-                            # 应用颜色模式
-                            if hasattr(self, 'color_mode_combo') and 'color_mode' in self.current_settings:
-                                self.color_mode_combo.blockSignals(True)
-                                self.color_mode_combo.setCurrentText(self.current_settings['color_mode'])
-                                self.color_mode_combo.blockSignals(False)
-                                print(f"设置颜色模式: {self.current_settings['color_mode']}")
+                            # 颜色模式已移除
                             
                             # 应用字体大小
                             if hasattr(self, 'font_size_combo') and 'font_size' in self.current_settings:
@@ -2847,6 +2885,11 @@ QPushButton:pressed {
         gen_nodes(self.menu_root)
         root_arr_name = f"{self.menu_root.name.replace(' ','_')}_children"
         code.append(f"MenuItem *menu_root = {root_arr_name};")
+
+        try:
+            code.extend(self._emit_ascii_font_array())
+        except Exception as e:
+            pass
 
         with open(filename,"w",encoding="utf-8") as f:
             f.write("\n".join(code))

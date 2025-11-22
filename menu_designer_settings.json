@@ -1,11 +1,10 @@
 {
   "screen_type": "TFT",
-  "color_mode": "16色",
-  "font_size": "大(16px)",
+  "font_size": "中(12px)",
   "preview_size": "实际大小",
-  "bg_color": "#00AAFF",
+  "bg_color": "#004080",
   "font_color": "#FFFFFF",
-  "selected_bg": "#FFFF00",
+  "selected_bg": "#FFFFFF",
   "selected_font": "#000000",
   "screen_width": "128",
   "screen_height": "128",
@@ -14,66 +13,23 @@
     "is_exec": false,
     "visible": true,
     "callback_name": "",
-    "cursor_pos": 7,
+    "cursor_pos": 2,
     "children": [
       {
         "name": "系统设置",
-        "is_exec": false,
+        "is_exec": true,
         "visible": true,
         "callback_name": "",
         "cursor_pos": 0,
-        "children": [
-          {
-            "name": "新菜单",
-            "is_exec": false,
-            "visible": true,
-            "callback_name": "",
-            "cursor_pos": 0,
-            "children": [
-              {
-                "name": "新菜单",
-                "is_exec": true,
-                "visible": true,
-                "callback_name": "",
-                "cursor_pos": 0,
-                "children": []
-              }
-            ]
-          },
-          {
-            "name": "新菜单",
-            "is_exec": true,
-            "visible": true,
-            "callback_name": "",
-            "cursor_pos": 0,
-            "children": []
-          },
-          {
-            "name": "新菜单",
-            "is_exec": true,
-            "visible": true,
-            "callback_name": "",
-            "cursor_pos": 0,
-            "children": []
-          }
-        ]
+        "children": []
       },
       {
         "name": "数据显示",
-        "is_exec": false,
+        "is_exec": true,
         "visible": true,
         "callback_name": "",
         "cursor_pos": 0,
-        "children": [
-          {
-            "name": "新菜单",
-            "is_exec": true,
-            "visible": true,
-            "callback_name": "",
-            "cursor_pos": 0,
-            "children": []
-          }
-        ]
+        "children": []
       },
       {
         "name": "设备控制",
@@ -165,14 +121,6 @@
       },
       {
         "name": "工厂重置",
-        "is_exec": true,
-        "visible": true,
-        "callback_name": "",
-        "cursor_pos": 0,
-        "children": []
-      },
-      {
-        "name": "新菜单",
         "is_exec": true,
         "visible": true,
         "callback_name": "",
