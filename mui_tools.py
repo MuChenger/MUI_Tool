@@ -65,6 +65,7 @@ class MenuPreview(QWidget):
         self.menu_root = None
         self.cursor_index = 0
         self.current_page = 0
+        self.font_family = "Segoe UI"
         
         # 滚动指示器参数
         self.scroll_indicator_width = 10
@@ -101,9 +102,11 @@ class MenuPreview(QWidget):
         self.setFixedSize(frame_width, frame_height)
 
     def set_screen_type(self, screen_type, font_size="小(8px)", 
-                        font_color="白色", bg_color="深蓝色", selected_bg="白色", selected_font="黑色"):
+                        font_color="白色", bg_color="深蓝色", selected_bg="白色", selected_font="黑色", font_family=None):
         """设置屏幕类型和相关参数"""
         self.screen_type = screen_type
+        if font_family:
+            self.font_family = font_family
         
         # 根据屏幕类型调整参数 - 不再硬编码尺寸，使用当前设置
         if screen_type == "OLED":
@@ -712,15 +715,13 @@ class MenuPreview(QWidget):
     def _get_font(self):
         """获取合适的字体"""
         from PySide6.QtGui import QFont
-        # 使用更适合像素级显示的字体
+        fam = getattr(self, 'font_family', None) or "Segoe UI"
+        font = QFont(fam, max(self.base_font_px, 10))
         if "OLED" in self.screen_type:
-            # OLED屏幕使用更适合低分辨率显示的字体
-            font = QFont("Courier New", max(self.base_font_px, 8))  # 使用等宽字体，最小8px
-            font.setStyleStrategy(QFont.NoAntialias)  # 禁用抗锯齿，保持像素级清晰
-            font.setHintingPreference(QFont.PreferFullHinting)  # 使用完整字体提示
+            font.setStyleStrategy(QFont.NoAntialias)
+            font.setHintingPreference(QFont.PreferFullHinting)
         else:
-            font = QFont("Microsoft YaHei", max(self.base_font_px, 10))  # 其他屏幕使用微软雅黑
-            font.setStyleStrategy(QFont.PreferAntialias)  # 其他屏幕可以使用抗锯齿
+            font.setStyleStrategy(QFont.PreferAntialias)
             
         font.setBold(False)  # 禁用粗体，减少像素化
         font.setStyleHint(QFont.Monospace)  # 使用等宽字体
@@ -1263,6 +1264,7 @@ QPushButton:pressed {
         self.default_font_combo.addItems(["Segoe UI","Arial","Times New Roman","Courier New","Microsoft YaHei","SimSun","SimHei","KaiTi"]) 
         self.default_font_combo.setCurrentText("Segoe UI")
         font_family_layout.addWidget(self.default_font_combo)
+        self.default_font_combo.currentTextChanged.connect(self.on_screen_config_changed)
         font_family_layout.addStretch()
         
         # 预览窗口大小设置
@@ -1384,7 +1386,12 @@ QPushButton:pressed {
         self.preview.preview_size_combo = self.preview_size_combo
         self.preview.set_screen_type(
             self.screen_type_combo.currentText(),
-            self.font_size_combo.currentText()
+            self.font_size_combo.currentText(),
+            font_color=self.font_color_hex.text().strip() if hasattr(self,'font_color_hex') else "#FFFFFF",
+            bg_color=self.bg_color_hex.text().strip() if hasattr(self,'bg_color_hex') else "#004080",
+            selected_bg=self.selected_bg_hex.text().strip() if hasattr(self,'selected_bg_hex') else "#FFFFFF",
+            selected_font=self.selected_font_hex.text().strip() if hasattr(self,'selected_font_hex') else "#000000",
+            font_family=self.default_font_combo.currentText() if hasattr(self,'default_font_combo') else "Segoe UI"
         )
         self.preview.menu_root = self.menu_root
         self.preview.render_menu()
@@ -1455,7 +1462,8 @@ QPushButton:pressed {
             font_color,
             bg_color,
             selected_bg,
-            selected_font
+            selected_font,
+            font_family=self.default_font_combo.currentText() if hasattr(self,'default_font_combo') else "Segoe UI"
         )
         self.preview.render_menu()
     
