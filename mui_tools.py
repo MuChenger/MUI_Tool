@@ -855,7 +855,29 @@ class MenuDesigner(QWidget):
                     if len(lines) > 20:
                         lines = lines[:20]
                     new_text = '\n'.join(lines)
-                self.text_widget.setPlainText(new_text)
+                
+                try:
+                    lines = new_text.split('\n') if new_text else []
+                    html_lines = []
+                    if lines:
+                        latest = lines[0]
+                        lt = latest.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;')
+                        if '按键:' in latest:
+                            html_lines.append(f"<span style=\"display:block;background:#FFF59D;color:#000000;font-weight:700;padding:2px 4px;\">{lt}</span>")
+                        else:
+                            html_lines.append(f"<span style=\"color:#e0e0e0;\">{lt}</span>")
+                        for l in lines[1:]:
+                            t = l.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;')
+                            if '按键:' in l:
+                                html_lines.append(f"<span style=\"color:#FFD54F;font-weight:700;\">{t}</span>")
+                            else:
+                                html_lines.append(f"<span style=\"color:#e0e0e0;\">{t}</span>")
+                        self.text_widget.setHtml("<br/>".join(html_lines))
+                    else:
+                        self.text_widget.setHtml("<span style=\"color:#808080\">等待按键操作...</span>")
+                except:
+                    # 兜底：纯文本
+                    self.text_widget.setPlainText(new_text)
 
             def flush(self):
                 self.original_stdout.flush()
