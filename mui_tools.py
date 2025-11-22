@@ -64,8 +64,17 @@ class MenuPreview(QWidget):
         self.update_preview_size()
         self.menu_root = None
         self.cursor_index = 0
+        self.view_start = 0
         self.current_page = 0
         self.font_family = "Segoe UI"
+        self.animating = False
+        self.anim_progress = 0.0
+        self.anim_prev_y = None
+        self.anim_target_y = None
+        self.anim_duration_ms = 140
+        self.anim_timer = QTimer(self)
+        self.anim_timer.setInterval(15)
+        self.anim_timer.timeout.connect(self._anim_tick)
         
         # 滚动指示器参数
         self.scroll_indicator_width = 10
@@ -419,22 +428,21 @@ class MenuPreview(QWidget):
             painter.setRenderHint(QPainter.TextAntialiasing, True)
             painter.setRenderHint(QPainter.SmoothPixmapTransform, True)  # 启用平滑变换
         
-        # 计算显示起始位置
+        # 计算显示起始位置（线性滚动）
         if max_lines >= total:
             start = 0
+            self.view_start = 0
             self.show_scrollbar = False
         else:
             self.show_scrollbar = True
-            # 更智能的滚动逻辑：光标位于合理位置
-            if self.cursor_index < max_lines // 2:
-                start = 0
-            elif self.cursor_index >= total - max_lines // 2:
-                start = max(0, total - max_lines)
-            else:
-                start = self.cursor_index - max_lines // 2
-            
-            # 计算当前页码
-            self.current_page = start // max_lines
+            if self.cursor_index < self.view_start:
+                self.view_start = self.cursor_index
+            elif self.cursor_index >= self.view_start + max_lines:
+                self.view_start = self.cursor_index - max_lines + 1
+            self.view_start = max(0, min(max(0, total - max_lines), self.view_start))
+            start = self.view_start
+        # 计算当前页码
+        self.current_page = start // max_lines
         
  # 固定底部导航高度，始终显示底部导航组件
         bottom_nav_height = self.base_font_px + 6  # 底部导航区域高度
@@ -444,22 +452,21 @@ class MenuPreview(QWidget):
         max_lines = effective_height // (self.base_font_px + 2)  # 重新计算最大行数
         max_lines = max(max_lines, 1)  # 确保至少显示一行
         
-        # 重新计算显示起始位置
+        # 重新计算显示起始位置（线性滚动）
         if max_lines >= total:
             start = 0
+            self.view_start = 0
             self.show_scrollbar = False
         else:
             self.show_scrollbar = True
-            # 更智能的滚动逻辑：光标位于合理位置
-            if self.cursor_index < max_lines // 2:
-                start = 0
-            elif self.cursor_index >= total - max_lines // 2:
-                start = max(0, total - max_lines)
-            else:
-                start = self.cursor_index - max_lines // 2
-            
-            # 计算当前页码
-            self.current_page = start // max_lines
+            if self.cursor_index < self.view_start:
+                self.view_start = self.cursor_index
+            elif self.cursor_index >= self.view_start + max_lines:
+                self.view_start = self.cursor_index - max_lines + 1
+            self.view_start = max(0, min(max(0, total - max_lines), self.view_start))
+            start = self.view_start
+        # 计算当前页码
+        self.current_page = start // max_lines
         
         # 计算字符宽度和最大显示长度
         char_width = self.base_font_px * 0.6  # 估算字符宽度
@@ -470,6 +477,11 @@ class MenuPreview(QWidget):
         else:
             max_name_length = 14  # 其他屏幕
             
+        # 记录选中项目标位置用于动画
+        calculated_selected_y = None
+        offset = 0
+        if getattr(self, 'content_animating', False):
+            offset = int(self.content_from + (self.content_to - self.content_from) * max(0.0, min(1.0, self.content_progress)))
         for i in range(max_lines):
             idx = start + i
             if idx >= total:
@@ -481,11 +493,11 @@ class MenuPreview(QWidget):
                     color = QColor(self.fg_color)
                     painter.setPen(QColor(color.red(), color.green(), color.blue(), 100))
                 for x in range(0, self.fb_w, 8):
-                    painter.drawPoint(x, i * line_h + line_h // 2)
+                    painter.drawPoint(x, i * line_h + line_h // 2 + offset)
                 break
                 
             item = visible[idx]
-            y = i * line_h + line_h
+            y = i * line_h + line_h + offset
             
             # 计算缩进
             depth = 0
@@ -502,8 +514,10 @@ class MenuPreview(QWidget):
             
             # 绘制选中项
             if idx == self.cursor_index:
-                # 绘制完整的选中背景，保持原来的样子
-                painter.fillRect(0, y - line_h, self.fb_w, line_h, self.selected_bg_color)
+                calculated_selected_y = y
+                # 动画时不立即填充背景，由动画条绘制；否则直接填充
+                if not getattr(self, 'animating', False):
+                    painter.fillRect(0, y - line_h, self.fb_w, line_h, self.selected_bg_color)
                 painter.setPen(self.selected_fg_color)
                 
                 # 绘制选中项内容 - 简化符号，右侧不显示多余符号
@@ -537,6 +551,15 @@ class MenuPreview(QWidget):
                     rect = painter.boundingRect(2, y - line_h, self.fb_w - 4, line_h, Qt.AlignLeft | Qt.AlignVCenter, text)
                     painter.drawText(rect, Qt.AlignLeft | Qt.AlignVCenter, text)
         
+        # 绘制选中条动画（轻量滑动）
+        if getattr(self, 'animating', False) and self.anim_prev_y is not None and self.anim_target_y is not None:
+            t = max(0.0, min(1.0, self.anim_progress))
+            e = self._ease(t)
+            anim_y = int(self.anim_prev_y + (self.anim_target_y - self.anim_prev_y) * e)
+            col = QColor(self.selected_bg_color)
+            col.setAlpha(int(180 + 75 * e))
+            painter.fillRect(0, anim_y - line_h, self.fb_w, line_h, col)
+
         # 绘制底部固定导航组件，始终显示
         # 先导入QFont类，确保在整个方法中可用
         from PySide6.QtGui import QFont
@@ -637,6 +660,34 @@ class MenuPreview(QWidget):
             # 保留分页功能但不显示箭头图标
         
         painter.end()
+
+        # 更新动画状态：检测选中项位置变更，启动动画
+        if calculated_selected_y is not None:
+            if self.anim_target_y is None:
+                self.anim_target_y = calculated_selected_y
+                self.anim_prev_y = calculated_selected_y
+            elif calculated_selected_y != self.anim_target_y:
+                # 根据移动行数自适应动画时长
+                moved_lines = max(1, int(abs(calculated_selected_y - self.anim_target_y) / max(1, line_h)))
+                self.anim_duration_ms = min(240, 120 + 40 * (moved_lines - 1))
+                self.anim_prev_y = self.anim_target_y
+                self.anim_target_y = calculated_selected_y
+                self.anim_progress = 0.0
+                self.animating = True
+                if hasattr(self, 'anim_timer') and not self.anim_timer.isActive():
+                    self.anim_timer.start()
+
+        if start != getattr(self, 'last_start', 0):
+            delta = start - getattr(self, 'last_start', 0)
+            step = (self.base_font_px + 2) * (1 if delta > 0 else -1) * min(3, abs(delta))
+            self.content_from = step
+            self.content_to = 0.0
+            self.content_progress = 0.0
+            self.content_animating = True
+            self.last_start = start
+            if hasattr(self, 'anim_timer') and not self.anim_timer.isActive():
+                self.anim_timer.start()
+
         self.update()
     
     def mousePressEvent(self, event):
@@ -711,6 +762,35 @@ class MenuPreview(QWidget):
         
         # 调用父类的鼠标事件处理
         super().mousePressEvent(event)
+
+    def _anim_tick(self):
+        any_anim = False
+        if getattr(self, 'animating', False):
+            step = 15.0 / float(getattr(self, 'anim_duration_ms', 140))
+            self.anim_progress += step
+            if self.anim_progress >= 1.0:
+                self.anim_progress = 1.0
+                self.animating = False
+            else:
+                any_anim = True
+        if getattr(self, 'content_animating', False):
+            step_c = 15.0 / float(getattr(self, 'anim_duration_ms', 140))
+            self.content_progress += step_c
+            if self.content_progress >= 1.0:
+                self.content_progress = 1.0
+                self.content_animating = False
+                self.content_from = 0.0
+                self.content_to = 0.0
+                self.content_progress = 0.0
+            else:
+                any_anim = True
+        if not any_anim:
+            if hasattr(self, 'anim_timer'):
+                self.anim_timer.stop()
+        self.render_menu()
+
+    def _ease(self, t):
+        return t * t * (3.0 - 2.0 * t)
 
     def _get_font(self):
         """获取合适的字体"""
