@@ -3184,7 +3184,17 @@ QPushButton:pressed {
         port_c.append("  if(visible_lines > 0 && nav->state.cursor >= nav->state.view_start + visible_lines) nav->state.view_start = nav->state.cursor - visible_lines + 1;")
         port_c.append("}")
         _write(os.path.join(bundle_dir, "porting_interface.c"), port_c)
-        print(f"C代码已导出到目录: {bundle_dir} (menu/, fonts/)")
+        bundle_h = []
+        bundle_h.append("#ifndef U8G2_CODE_BUNDLE_H")
+        bundle_h.append("#define U8G2_CODE_BUNDLE_H")
+        bundle_h.append("#include \"menu/menu.h\"")
+        bundle_h.append("#include \"porting_interface.h\"")
+        bundle_h.append("#include \"callbacks/callbacks.h\"")
+        if cjk_h:
+            bundle_h.append("#include \"fonts/cjk_font.h\"")
+        bundle_h.append("#endif")
+        _write(os.path.join(bundle_dir, "u8g2_bundle.h"), bundle_h)
+        print(f"C代码已导出到目录: {bundle_dir} (menu/, fonts/, callbacks/, porting_interface.*)")
 
 # ---------------- Main ----------------
 if __name__=="__main__":
