@@ -3272,11 +3272,23 @@ QPushButton:pressed {
             root_arr_name_bare = f"{_sanitize_ident(self.menu_root.name, f'node_{self.menu_root.id}')}_{self.menu_root.id}_children"
             bare_menu_c.append(f"MenuItem *menu_root = {root_arr_name_bare};")
             bare_menu_c.append("")
+            bare_menu_c.append("static uint8_t g_cursor=0; static uint8_t g_view=0; static uint8_t g_last_view=0;")
+            bare_menu_c.append("static int g_from=0; static int g_to=0; static float g_prog=1.0f; static int g_anim_ms=140;")
+            bare_menu_c.append("static float _ease(float t){ return t*t*(3.0f - 2.0f*t); }")
+            bare_menu_c.append("void mui_anim_tick(int dt_ms){ if(g_prog < 1.0f){ g_prog += (float)dt_ms / (float)g_anim_ms; if(g_prog > 1.0f) g_prog = 1.0f; } }")
+            bare_menu_c.append("void mui_nav_init(void){ g_cursor=0; g_view=0; g_last_view=0; g_from=0; g_to=0; g_prog=1.0f; }")
+            bare_menu_c.append("void mui_nav_on_key(uint8_t key){ uint8_t count=menu_root->child_count; if(key==1){ if(g_cursor>0) g_cursor--; } else if(key==2){ if(g_cursor+1<count) g_cursor++; } else if(key==3){ MenuItem* sel=&menu_root->children[g_cursor]; if(sel->is_exec && sel->callback) sel->callback(); } else if(key==4){ } if(g_cursor < g_view) g_view = g_cursor; int scr_h=gfx_height(); int line_h=12; int bottom=12; int vis = (scr_h-bottom)/line_h; if(vis>0 && g_cursor >= g_view + vis) g_view = g_cursor - vis + 1; int delta = (int)g_view - (int)g_last_view; if(delta != 0){ int step = line_h * (delta>0 ? 1 : -1) * ( (delta>0?delta:-delta) > 3 ? 3 : (delta>0?delta:-delta) ); g_from = step; g_to = 0; g_prog = 0.0f; g_last_view = g_view; } }")
+            bare_menu_c.append("uint8_t mui_get_cursor(void){ return g_cursor; }")
+            bare_menu_c.append("uint8_t mui_get_view_start(void){ return g_view; }")
             bare_menu_c.append("void draw_menu_bare(uint8_t cursor, uint8_t view_start){")
-            bare_menu_c.append("  int base_y=12; int line_h=12;")
+            bare_menu_c.append("  int base_y=12; int line_h=12; int margin_x=2; int bottom_h=12;")
+            bare_menu_c.append("  int scr_w=gfx_width(); int scr_h=gfx_height(); int eff_h = scr_h - bottom_h; int vis = eff_h / line_h; if(vis<1) vis=1;")
             bare_menu_c.append("  gfx_clear();")
-            bare_menu_c.append("  for(uint8_t i=0;i<menu_root->child_count;i++){ const char* txt=menu_root->children[i].name; int y=base_y + i*line_h; gfx_draw_text_mixed(2,y,txt);")
-            bare_menu_c.append("  }")
+            bare_menu_c.append("  int total = menu_root->child_count;")
+            bare_menu_c.append("  int off = (int)( (float)g_from + ((float)g_to - (float)g_from) * _ease(g_prog) );")
+            bare_menu_c.append("  for(int i=0;i<vis;i++){ int idx = view_start + i; if(idx>=total) break; int y = base_y + i*line_h + off; if(idx==cursor){ gfx_fill_rect(0, y-(line_h-1), scr_w, line_h); } const char* txt = menu_root->children[idx].name; gfx_draw_text_mixed(margin_x, y, txt); }")
+            bare_menu_c.append("  if(total>vis){ int track_x = scr_w-3; int track_y = base_y- (line_h-1); int track_h = vis*line_h; gfx_fill_rect(track_x, track_y, 1, track_h); int thumb_h = track_h * vis / total; if(thumb_h<4) thumb_h=4; int thumb_y = track_y + (track_h - thumb_h) * view_start / (total - vis); gfx_fill_rect(track_x+1, thumb_y, 2, thumb_h); }")
+            bare_menu_c.append("  int nav_y = eff_h + (bottom_h/2); gfx_draw_text_mixed(2, nav_y, \"< 上/下 选择  确认 >\");")
             bare_menu_c.append("  gfx_send();")
             bare_menu_c.append("}")
             gfx_h = []
@@ -3290,6 +3302,8 @@ QPushButton:pressed {
             gfx_h.append("void gfx_fill_rect(int x,int y,int w,int h);")
             gfx_h.append("void gfx_draw_bitmap_1bpp(int x,int y,int w,int h,const uint8_t* data);")
             gfx_h.append("void gfx_draw_text_mixed(int x,int y,const char* utf8);")
+            gfx_h.append("int gfx_width(void);")
+            gfx_h.append("int gfx_height(void);")
             gfx_h.append("#endif")
             gfx_c = []
             gfx_c.append("#include \"gfx_port.h\"")
@@ -3298,6 +3312,8 @@ QPushButton:pressed {
             if hasattr(self, 'cb_emit_cjk') and self.cb_emit_cjk.isChecked():
                 gfx_c.extend(self._emit_cjk_font_subset())
             gfx_c.append("")
+            gfx_c.append("int gfx_width(void){ return 128; }");
+            gfx_c.append("int gfx_height(void){ return 64; }");
             gfx_c.append("void gfx_init(void){}");
             gfx_c.append("void gfx_clear(void){}");
             gfx_c.append("void gfx_send(void){}");
@@ -3316,7 +3332,7 @@ QPushButton:pressed {
             example_c.append("#include \"gfx_port.h\"")
             example_c.append("#include \"input_port.h\"")
             example_c.append("#include <stdint.h>")
-            example_c.append("int main(void){ gfx_init(); uint8_t cursor=0, view_start=0; for(;;){ MenuKey k=input_port_read(); (void)k; gfx_clear(); draw_menu_bare(cursor,view_start); gfx_send(); } return 0; }")
+            example_c.append("int main(void){ gfx_init(); mui_nav_init(); for(;;){ MenuKey k=input_port_read(); mui_nav_on_key((uint8_t)k); mui_anim_tick(16); draw_menu_bare(mui_get_cursor(), mui_get_view_start()); } return 0; }")
             os.makedirs(os.path.join(bare_dir, "menu"), exist_ok=True)
             os.makedirs(os.path.join(bare_dir, "port"), exist_ok=True)
             os.makedirs(os.path.join(bare_dir, "examples"), exist_ok=True)
