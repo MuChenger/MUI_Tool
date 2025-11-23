@@ -2968,11 +2968,11 @@ QPushButton:pressed {
 
     # ---------------- 导出完整 C 代码 ----------------
     def export_code(self):
-        filename,_ = QFileDialog.getSaveFileName(self,"保存C代码","menu.c","C Files (*.c)")
-        if not filename: return
-
-        code = ["// 自动生成菜单代码 - U8G2", "#include <u8g2.h>", ""]
-        code.append("// ---------------- 回调函数 ----------------")
+        import os
+        out_dir = QFileDialog.getExistingDirectory(self, "选择导出目录", "")
+        if not out_dir:
+            return
+        px = self._parse_font_px()
         def _sanitize_ident(s, fallback):
             import re
             ident = re.sub(r"[^A-Za-z0-9_]", "_", s)
@@ -2980,137 +2980,211 @@ QPushButton:pressed {
             if not ident or ident[0].isdigit():
                 ident = fallback
             return ident
-        def gen_callbacks(node):
+        menu_h = []
+        menu_h.append("#ifndef MENU_H")
+        menu_h.append("#define MENU_H")
+        menu_h.append("#include <u8g2.h>")
+        menu_h.append("#include <stdint.h>")
+        menu_h.append("typedef struct MenuItem {")
+        menu_h.append("  const char *name;")
+        menu_h.append("  uint8_t is_exec;")
+        menu_h.append("  uint8_t child_count;")
+        menu_h.append("  struct MenuItem *children;")
+        menu_h.append("  void (*callback)(void);")
+        menu_h.append("} MenuItem;")
+        menu_h.append("extern MenuItem *menu_root;")
+        menu_h.append("void draw_menu(u8g2_t *u8g2, MenuItem *root, uint8_t cursor, uint8_t view_start);")
+        menu_h.append("#endif")
+
+        menu_c = []
+        menu_c.append("#include \"menu.h\"")
+        if hasattr(self, 'cb_emit_cjk') and self.cb_emit_cjk.isChecked():
+            menu_c.append("#include \"../fonts/cjk_font.h\"")
+        menu_c.append("#include \"../callbacks/callbacks.h\"")
+        menu_c.append("")
+        callbacks_h = []
+        callbacks_c = []
+        callbacks_h.append("#ifndef MENU_CALLBACKS_H")
+        callbacks_h.append("#define MENU_CALLBACKS_H")
+        callbacks_h.append("#include <stdint.h>")
+        def gen_callbacks_to(node):
             for c in node.children:
                 if c.is_exec:
                     cb = c.callback_name if c.callback_name else f"menu_cb_{c.id}"
                     cb = _sanitize_ident(cb, f"menu_cb_{c.id}")
-                    code.append(f"void {cb}(void) {{")
-                    code.append(f"    // TODO: 在此添加 {c.name} 的执行代码")
-                    code.append("}\n")
-                gen_callbacks(c)
-        gen_callbacks(self.menu_root)
-
-        code.append("typedef struct MenuItem {")
-        code.append("  const char *name;")
-        code.append("  uint8_t is_exec;")
-        code.append("  uint8_t child_count;")
-        code.append("  struct MenuItem *children;")
-        code.append("  void (*callback)(void);")
-        code.append("} MenuItem;\n")
-
-        # 生成嵌套数组
-        def gen_nodes(node):
+                    callbacks_h.append(f"void {cb}(void);")
+                    callbacks_c.append(f"void {cb}(void){{}}")
+                gen_callbacks_to(c)
+        gen_callbacks_to(self.menu_root)
+        callbacks_h.append("#endif")
+        def gen_nodes_to(lines, node):
             for c in node.children:
                 if c.children:
-                    gen_nodes(c)
+                    gen_nodes_to(lines, c)
             arr_name = f"{_sanitize_ident(node.name, f'node_{node.id}')}_{node.id}_children"
-            code.append(f"MenuItem {arr_name}[{len(node.children)}] = {{")
+            lines.append(f"MenuItem {arr_name}[{len(node.children)}] = {{")
             for c in node.children:
                 child_ptr = f"{_sanitize_ident(c.name, f'node_{c.id}')}_{c.id}_children" if c.children else "NULL"
                 cb_name = c.callback_name if c.callback_name else (f"menu_cb_{c.id}" if c.is_exec else "")
                 cb_ptr = _sanitize_ident(cb_name, f"menu_cb_{c.id}") if c.is_exec else "NULL"
-                code.append(f'  {{"{c.name}", {1 if c.is_exec else 0}, {len(c.children)}, {child_ptr}, {cb_ptr}}},')
-            code.append("};\n")
-
-        gen_nodes(self.menu_root)
+                lines.append(f'  {{"{c.name}", {1 if c.is_exec else 0}, {len(c.children)}, {child_ptr}, {cb_ptr}}},')
+            lines.append("};")
+            lines.append("")
+        gen_nodes_to(menu_c, self.menu_root)
         root_arr_name = f"{_sanitize_ident(self.menu_root.name, f'node_{self.menu_root.id}')}_{self.menu_root.id}_children"
-        code.append(f"MenuItem *menu_root = {root_arr_name};")
-
-        # 可选：生成 ASCII 字体数组
-        if hasattr(self, 'cb_emit_font') and self.cb_emit_font.isChecked():
-            try:
-                code.extend(self._emit_ascii_font_array())
-            except Exception:
-                pass
-
-        # 可选：生成中文子集字库
+        menu_c.append(f"MenuItem *menu_root = {root_arr_name};")
+        menu_c.append("")
+        menu_c.append("void draw_menu(u8g2_t *u8g2, MenuItem *root, uint8_t cursor, uint8_t view_start){")
+        menu_c.append("  u8g2_ClearBuffer(u8g2);")
+        menu_c.append("  u8g2_SetFont(u8g2, u8g2_font_6x10_tf);")
+        menu_c.append("  int base_y = 12; int line_h = 12;")
+        menu_c.append("  for (uint8_t i = 0; i < root->child_count; ++i) {")
+        menu_c.append("    const char *txt = root->children[i].name;")
+        menu_c.append("    int y = base_y + i * line_h;")
         if hasattr(self, 'cb_emit_cjk') and self.cb_emit_cjk.isChecked():
-            try:
-                code.extend(self._emit_cjk_font_subset())
-                code.append("")
-                code.append("static int cjk_find_idx(uint16_t code) {")
-                code.append("  int l = 0; int r = (int)(sizeof(cjk_table_" + str(self._parse_font_px()) + ")/sizeof(GlyphEntry)) - 1;")
-                code.append("  while (l <= r) {")
-                code.append("    int m = (l + r) / 2;")
-                code.append("    if (cjk_table_" + str(self._parse_font_px()) + "[m].code == code) return m;")
-                code.append("    if (cjk_table_" + str(self._parse_font_px()) + "[m].code < code) l = m + 1; else r = m - 1;")
-                code.append("  }")
-                code.append("  return -1;")
-                code.append("}")
-                code.append("")
-                code.append("static void draw_cjk_char(u8g2_t *u8g2, uint16_t code, int x, int y) {")
-                code.append("  int idx = cjk_find_idx(code);")
-                code.append("  if (idx < 0) return;")
-                code.append("  GlyphEntry e = cjk_table_" + str(self._parse_font_px()) + "[idx];")
-                code.append("  const uint8_t *p = cjk_bitmap_" + str(self._parse_font_px()) + ";")
-                code.append("  p += e.offset;")
-                code.append("  uint8_t row_stride = (e.w + 7) / 8;")
-                code.append("  for (uint8_t yy = 0; yy < e.h; ++yy) {")
-                code.append("    const uint8_t *row = p + yy * row_stride;")
-                code.append("    uint8_t bit = 0; uint8_t b = 0;")
-                code.append("    for (uint8_t xx = 0; xx < e.w; ++xx) {")
-                code.append("      if (bit == 0) { b = *row++; bit = 8; }")
-                code.append("      uint8_t on = (b & 0x80) ? 1 : 0; b <<= 1; bit--;")
-                code.append("      if (on) u8g2_DrawPixel(u8g2, x + xx, y + yy);")
-                code.append("    }")
-                code.append("  }")
-                code.append("}")
-                code.append("")
-                code.append("static uint32_t utf8_next(const char *s, uint32_t *i) {")
-                code.append("  uint8_t c = (uint8_t)s[*i];")
-                code.append("  if (c < 0x80) { (*i)++; return c; }")
-                code.append("  if ((c & 0xE0) == 0xC0) { uint32_t cp = (c & 0x1F) << 6; c = (uint8_t)s[++(*i)]; cp |= (c & 0x3F); (*i)++; return cp; }")
-                code.append("  if ((c & 0xF0) == 0xE0) { uint8_t c1 = (uint8_t)s[*i+1]; uint8_t c2 = (uint8_t)s[*i+2]; uint32_t cp = ((uint32_t)(c & 0x0F) << 12) | ((uint32_t)(c1 & 0x3F) << 6) | (uint32_t)(c2 & 0x3F); *i += 3; return cp; }")
-                code.append("  if ((c & 0xF8) == 0xF0) { uint8_t c1 = (uint8_t)s[*i+1]; uint8_t c2 = (uint8_t)s[*i+2]; uint8_t c3 = (uint8_t)s[*i+3]; uint32_t cp = ((uint32_t)(c & 0x07) << 18) | ((uint32_t)(c1 & 0x3F) << 12) | ((uint32_t)(c2 & 0x3F) << 6) | (uint32_t)(c3 & 0x3F); *i += 4; return cp; }")
-                code.append("  (*i)++; return 0x3F;")
-                code.append("}")
-                code.append("")
-                code.append("void draw_text_mixed(u8g2_t *u8g2, const char *utf8, int x, int y) {")
-                code.append("  uint32_t i = 0; int cx = x;")
-                code.append("  while (utf8[i]) {")
-                code.append("    uint32_t cp = utf8_next(utf8, &i);")
-                code.append("    if (cp < 128) {")
-                code.append("      char buf[2]; buf[0] = (char)cp; buf[1] = '\\0';")
-                code.append("      u8g2_DrawStr(u8g2, cx, y, buf);")
-                code.append("      cx += u8g2_GetStrWidth(u8g2, buf);")
-                code.append("    } else {")
-                code.append("      int idx = cjk_find_idx((uint16_t)cp);")
-                code.append("      if (idx >= 0) {")
-                code.append("        GlyphEntry e = cjk_table_" + str(self._parse_font_px()) + "[idx];")
-                code.append("        draw_cjk_char(u8g2, (uint16_t)cp, cx, y - e.h + u8g2_GetMaxCharHeight(u8g2));")
-                code.append("        cx += e.w + 1;")
-                code.append("      } else {")
-                code.append("        u8g2_DrawStr(u8g2, cx, y, " + '"?"' + ");")
-                code.append("        cx += u8g2_GetStrWidth(u8g2, " + '"?"' + ");")
-                code.append("      }")
-                code.append("    }")
-                code.append("  }")
-                code.append("}")
-            except Exception:
-                pass
+            menu_c.append("    draw_text_mixed(u8g2, txt, 2, y);")
+        else:
+            menu_c.append("    u8g2_DrawStr(u8g2, 2, y, txt);")
+        menu_c.append("  }")
+        menu_c.append("  u8g2_SendBuffer(u8g2);")
+        menu_c.append("}")
 
-        # 可选：生成绘制函数骨架
-        if hasattr(self, 'cb_emit_draw') and self.cb_emit_draw.isChecked():
-            code.append("\n// ---------------- 绘制函数骨架 ----------------")
-            code.append("void draw_menu(u8g2_t *u8g2, MenuItem *root, uint8_t cursor, uint8_t view_start) {")
-            code.append("  u8g2_ClearBuffer(u8g2);")
-            code.append("  u8g2_SetFont(u8g2, u8g2_font_6x10_tf);")
-            code.append("  int base_y = 12; int line_h = 12;")
-            code.append("  for (uint8_t i = 0; i < root->child_count; ++i) {")
-            code.append("    const char *txt = root->children[i].name;")
-            code.append("    int y = base_y + i * line_h;")
-            if hasattr(self, 'cb_emit_cjk') and self.cb_emit_cjk.isChecked():
-                code.append("    draw_text_mixed(u8g2, txt, 2, y);")
-            else:
-                code.append("    u8g2_DrawStr(u8g2, 2, y, txt);")
-            code.append("  }")
-            code.append("  u8g2_SendBuffer(u8g2);")
-            code.append("}")
+        ascii_h = []
+        ascii_c = []
+        if hasattr(self, 'cb_emit_font') and self.cb_emit_font.isChecked():
+            ascii_h.append(f"#ifndef ASCII_FONT_PX_{px}_H")
+            ascii_h.append(f"#define ASCII_FONT_PX_{px}_H")
+            ascii_h.append("#include <stdint.h>")
+            ascii_h.append(f"extern const uint8_t ascii_font_{px}[];")
+            ascii_h.append("#endif")
+            ascii_c.append(f"#include \"ascii_font.h\"")
+            ascii_c.extend(self._emit_ascii_font_array())
 
-        with open(filename,"w",encoding="utf-8") as f:
-            f.write("\n".join(code))
-        print(f"C代码已导出: {filename}")
+        cjk_h = []
+        cjk_c = []
+        if hasattr(self, 'cb_emit_cjk') and self.cb_emit_cjk.isChecked():
+            cjk_h.append(f"#ifndef CJK_FONT_PX_{px}_H")
+            cjk_h.append(f"#define CJK_FONT_PX_{px}_H")
+            cjk_h.append("#include <stdint.h>")
+            cjk_h.append("#include <u8g2.h>")
+            cjk_h.append("typedef struct { uint16_t code; uint32_t offset; uint8_t w; uint8_t h; } GlyphEntry;")
+            cjk_h.append(f"extern const uint8_t cjk_bitmap_{px}[];")
+            cjk_h.append(f"extern const GlyphEntry cjk_table_{px}[];")
+            cjk_h.append("int cjk_find_idx(uint16_t code);")
+            cjk_h.append("void draw_cjk_char(u8g2_t *u8g2, uint16_t code, int x, int y);")
+            cjk_h.append("void draw_text_mixed(u8g2_t *u8g2, const char *utf8, int x, int y);")
+            cjk_h.append("#endif")
+            cjk_c.append("#include \"cjk_font.h\"")
+            cjk_c.extend(self._emit_cjk_font_subset())
+            cjk_c.append("")
+            cjk_c.append("int cjk_find_idx(uint16_t code){")
+            cjk_c.append(f"  int l=0; int r=(int)(sizeof(cjk_table_{px})/sizeof(GlyphEntry))-1;")
+            cjk_c.append("  while(l<=r){")
+            cjk_c.append("    int m=(l+r)/2;")
+            cjk_c.append(f"    if(cjk_table_{px}[m].code==code) return m;")
+            cjk_c.append(f"    if(cjk_table_{px}[m].code<code) l=m+1; else r=m-1;")
+            cjk_c.append("  }")
+            cjk_c.append("  return -1;")
+            cjk_c.append("}")
+            cjk_c.append("")
+            cjk_c.append("void draw_cjk_char(u8g2_t *u8g2, uint16_t code, int x, int y){")
+            cjk_c.append("  int idx=cjk_find_idx(code);")
+            cjk_c.append("  if(idx<0) return;")
+            cjk_c.append(f"  GlyphEntry e=cjk_table_{px}[idx];")
+            cjk_c.append(f"  const uint8_t *p=cjk_bitmap_{px};")
+            cjk_c.append("  p+=e.offset;")
+            cjk_c.append("  uint8_t stride=(e.w+7)/8;")
+            cjk_c.append("  for(uint8_t yy=0; yy<e.h; ++yy){")
+            cjk_c.append("    const uint8_t *row=p+yy*stride;")
+            cjk_c.append("    uint8_t bit=0; uint8_t b=0;")
+            cjk_c.append("    for(uint8_t xx=0; xx<e.w; ++xx){")
+            cjk_c.append("      if(bit==0){ b=*row++; bit=8; }")
+            cjk_c.append("      uint8_t on=(b&0x80)?1:0; b<<=1; bit--;")
+            cjk_c.append("      if(on) u8g2_DrawPixel(u8g2, x+xx, y+yy);")
+            cjk_c.append("    }")
+            cjk_c.append("  }")
+            cjk_c.append("}")
+            cjk_c.append("")
+            cjk_c.append("static uint32_t utf8_next(const char *s, uint32_t *i){")
+            cjk_c.append("  uint8_t c=(uint8_t)s[*i];")
+            cjk_c.append("  if(c<0x80){ (*i)++; return c; }")
+            cjk_c.append("  if((c&0xE0)==0xC0){ uint32_t cp=(c&0x1F)<<6; c=(uint8_t)s[++(*i)]; cp|=(c&0x3F); (*i)++; return cp; }")
+            cjk_c.append("  if((c&0xF0)==0xE0){ uint8_t c1=(uint8_t)s[*i+1]; uint8_t c2=(uint8_t)s[*i+2]; uint32_t cp=((uint32_t)(c&0x0F)<<12)|((uint32_t)(c1&0x3F)<<6)|(uint32_t)(c2&0x3F); *i+=3; return cp; }")
+            cjk_c.append("  if((c&0xF8)==0xF0){ uint8_t c1=(uint8_t)s[*i+1]; uint8_t c2=(uint8_t)s[*i+2]; uint8_t c3=(uint8_t)s[*i+3]; uint32_t cp=((uint32_t)(c&0x07)<<18)|((uint32_t)(c1&0x3F)<<12)|((uint32_t)(c2&0x3F)<<6)|(uint32_t)(c3&0x3F); *i+=4; return cp; }")
+            cjk_c.append("  (*i)++; return 0x3F;")
+            cjk_c.append("}")
+            cjk_c.append("")
+            cjk_c.append("void draw_text_mixed(u8g2_t *u8g2, const char *utf8, int x, int y){")
+            cjk_c.append("  uint32_t i=0; int cx=x;")
+            cjk_c.append("  while(utf8[i]){")
+            cjk_c.append("    uint32_t cp=utf8_next(utf8,&i);")
+            cjk_c.append("    if(cp<128){ char buf[2]; buf[0]=(char)cp; buf[1]='\0'; u8g2_DrawStr(u8g2, cx, y, buf); cx += u8g2_GetStrWidth(u8g2, buf); }")
+            cjk_c.append(f"    else {{ int idx=cjk_find_idx((uint16_t)cp); if(idx>=0){{ GlyphEntry e=cjk_table_{px}[idx]; draw_cjk_char(u8g2,(uint16_t)cp,cx,y - e.h + u8g2_GetMaxCharHeight(u8g2)); cx += e.w + 1; }} else {{ u8g2_DrawStr(u8g2, cx, y, \"?\"); cx += u8g2_GetStrWidth(u8g2, \"?\"); }} }}")
+            cjk_c.append("  }")
+            cjk_c.append("}")
+
+        def _write(path, lines):
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                f.write("\n".join(lines))
+
+        bundle_dir = os.path.join(out_dir, "u8g2_code")
+        menu_dir = os.path.join(bundle_dir, "menu")
+        fonts_dir = os.path.join(bundle_dir, "fonts")
+        _write(os.path.join(menu_dir, "menu.h"), menu_h)
+        _write(os.path.join(menu_dir, "menu.c"), menu_c)
+        if ascii_h:
+            _write(os.path.join(fonts_dir, "ascii_font.h"), ascii_h)
+            _write(os.path.join(fonts_dir, "ascii_font.c"), ascii_c)
+        if cjk_h:
+            _write(os.path.join(fonts_dir, "cjk_font.h"), cjk_h)
+            _write(os.path.join(fonts_dir, "cjk_font.c"), cjk_c)
+        callbacks_dir = os.path.join(bundle_dir, "callbacks")
+        _write(os.path.join(callbacks_dir, "callbacks.h"), callbacks_h)
+        _write(os.path.join(callbacks_dir, "callbacks.c"), callbacks_c)
+        # 生成移植接口（按键导航）
+        port_h = []
+        port_h.append("#ifndef PORTING_INTERFACE_H")
+        port_h.append("#define PORTING_INTERFACE_H")
+        port_h.append("#include <stdint.h>")
+        port_h.append("#include \"menu/menu.h\"")
+        port_h.append("typedef enum { MENU_KEY_NONE=0, MENU_KEY_UP, MENU_KEY_DOWN, MENU_KEY_ENTER, MENU_KEY_BACK } MenuKey;")
+        port_h.append("typedef struct { uint8_t cursor; uint8_t view_start; } MenuState;")
+        port_h.append("typedef struct { MenuItem* current; MenuItem* stack[16]; uint8_t depth; MenuState state; } MenuNav;")
+        port_h.append("void menu_nav_init(MenuNav* nav, MenuItem* root);")
+        port_h.append("void menu_nav_on_key(MenuNav* nav, MenuKey key, uint8_t visible_lines);")
+        port_h.append("#endif")
+        _write(os.path.join(bundle_dir, "porting_interface.h"), port_h)
+
+        port_c = []
+        port_c.append("#include \"porting_interface.h\"")
+        port_c.append("")
+        port_c.append("void menu_nav_init(MenuNav* nav, MenuItem* root){")
+        port_c.append("  nav->current = root;")
+        port_c.append("  nav->depth = 0;")
+        port_c.append("  nav->state.cursor = 0;")
+        port_c.append("  nav->state.view_start = 0;")
+        port_c.append("}")
+        port_c.append("")
+        port_c.append("void menu_nav_on_key(MenuNav* nav, MenuKey key, uint8_t visible_lines){")
+        port_c.append("  if(!nav || !nav->current) return;")
+        port_c.append("  uint8_t count = nav->current->child_count;")
+        port_c.append("  switch(key){")
+        port_c.append("    case MENU_KEY_UP: if(nav->state.cursor > 0) nav->state.cursor--; break;")
+        port_c.append("    case MENU_KEY_DOWN: if(nav->state.cursor + 1 < count) nav->state.cursor++; break;")
+        port_c.append("    case MENU_KEY_ENTER: {")
+        port_c.append("      MenuItem* sel = &nav->current->children[nav->state.cursor];")
+        port_c.append("      if(sel->is_exec && sel->callback) sel->callback();")
+        port_c.append("      else if(sel->child_count){ if(nav->depth < 16) nav->stack[nav->depth++] = nav->current; nav->current = sel; nav->state.cursor = 0; nav->state.view_start = 0; }")
+        port_c.append("    } break;")
+        port_c.append("    case MENU_KEY_BACK: if(nav->depth > 0){ nav->current = nav->stack[--nav->depth]; nav->state.cursor = 0; nav->state.view_start = 0; } break;")
+        port_c.append("    default: break;")
+        port_c.append("  }")
+        port_c.append("  if(nav->state.cursor < nav->state.view_start) nav->state.view_start = nav->state.cursor;")
+        port_c.append("  if(visible_lines > 0 && nav->state.cursor >= nav->state.view_start + visible_lines) nav->state.view_start = nav->state.cursor - visible_lines + 1;")
+        port_c.append("}")
+        _write(os.path.join(bundle_dir, "porting_interface.c"), port_c)
+        print(f"C代码已导出到目录: {bundle_dir} (menu/, fonts/)")
 
 # ---------------- Main ----------------
 if __name__=="__main__":

@@ -1,12 +1,12 @@
 {
   "screen_type": "TFT",
-  "font_size": "中(12px)",
+  "font_size": "大(16px)",
   "preview_size": "实际大小",
-  "bg_color": "#000080",
-  "font_color": "#FFFF00",
-  "selected_bg": "#FFFF00",
-  "selected_font": "#000080",
-  "font_family": "Segoe UI",
+  "bg_color": "#DDA2FF",
+  "font_color": "#FFFFFF",
+  "selected_bg": "#FFFFFF",
+  "selected_font": "#000000",
+  "font_family": "KaiTi",
   "emit_font_array": true,
   "emit_draw_skeleton": true,
   "emit_cjk_subset": true,
@@ -17,7 +17,7 @@
     "is_exec": false,
     "visible": true,
     "callback_name": "",
-    "cursor_pos": 1,
+    "cursor_pos": 5,
     "children": [
       {
         "name": "系统设置",
