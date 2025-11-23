@@ -1,11 +1,14 @@
 {
   "screen_type": "TFT",
-  "font_size": "中(12px)",
+  "font_size": "大(16px)",
   "preview_size": "实际大小",
-  "bg_color": "#004080",
+  "bg_color": "#DDA2FF",
   "font_color": "#FFFFFF",
   "selected_bg": "#FFFFFF",
   "selected_font": "#000000",
+  "font_family": "SimHei",
+  "emit_font_array": true,
+  "emit_draw_skeleton": true,
   "screen_width": "128",
   "screen_height": "128",
   "menu_data": {
@@ -13,15 +16,33 @@
     "is_exec": false,
     "visible": true,
     "callback_name": "",
-    "cursor_pos": 0,
+    "cursor_pos": 8,
     "children": [
       {
         "name": "系统设置",
-        "is_exec": true,
+        "is_exec": false,
         "visible": true,
         "callback_name": "",
         "cursor_pos": 0,
-        "children": []
+        "children": [
+          {
+            "name": "新菜单",
+            "is_exec": false,
+            "visible": true,
+            "callback_name": "void user();",
+            "cursor_pos": 0,
+            "children": [
+              {
+                "name": "新菜单",
+                "is_exec": true,
+                "visible": true,
+                "callback_name": "void usr();",
+                "cursor_pos": 0,
+                "children": []
+              }
+            ]
+          }
+        ]
       },
       {
         "name": "数据显示",

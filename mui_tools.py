@@ -1,7 +1,7 @@
 # mcu_menu_designer_u8g2_final_complete.py
 from PySide6.QtWidgets import (QApplication, QWidget, QTreeWidget, QTreeWidgetItem, QTextEdit,
     QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
-    QLineEdit, QFileDialog, QGroupBox, QComboBox)
+    QLineEdit, QFileDialog, QGroupBox, QComboBox, QCheckBox, QScrollArea, QTabWidget)
 from PySide6.QtGui import (QTextOption, QPainter, QPixmap, QColor, QFont)
 from PySide6.QtCore import Qt, QTime, QTimer
 
@@ -817,7 +817,7 @@ class MenuDesigner(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("MCU 菜单设计器 - U8G2 完整版")
-        self.resize(1200,700)
+        self.resize(1270,700)
         
         # 添加按键防抖机制
         from PySide6.QtCore import QTimer
@@ -835,7 +835,10 @@ class MenuDesigner(QWidget):
             'bg_color': '#004080',
             'font_color': '#FFFFFF',
             'selected_bg': '#FFFFFF',
-            'selected_font': '#000000'
+            'selected_font': '#000000',
+            'font_family': 'Segoe UI',
+            'emit_font_array': True,
+            'emit_draw_skeleton': True
         }
         
         # 加载保存的设置
@@ -869,7 +872,7 @@ class MenuDesigner(QWidget):
 
         # === 左侧：菜单树 ===
         left_widget = QWidget()
-        left_widget.setMinimumWidth(280)
+        left_widget.setMinimumWidth(360)
         left_layout = QVBoxLayout(left_widget)
         left_layout.setSpacing(10)  # 增加内部间距
         left_layout.setContentsMargins(0, 0, 0, 0)
@@ -1039,7 +1042,8 @@ class MenuDesigner(QWidget):
 
         # === 右侧：配置与操作 ===
         right_widget = QWidget()
-        right_widget.setMaximumWidth(320)  # 限制右侧宽度
+        right_widget.setMinimumWidth(400)
+        right_widget.setMaximumWidth(600)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setSpacing(10)
         right_layout.setContentsMargins(0, 0, 0, 0)
@@ -1286,6 +1290,13 @@ QPushButton:pressed {
         config_tab_layout = QVBoxLayout(config_tab)
         config_tab_layout.setSpacing(10)
         config_tab_layout.setContentsMargins(15, 15, 15, 15)
+        config_scroll = QScrollArea()
+        config_scroll.setWidgetResizable(True)
+        config_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        config_inner = QWidget()
+        config_inner_layout = QVBoxLayout(config_inner)
+        config_inner_layout.setSpacing(10)
+        config_inner_layout.setContentsMargins(0, 0, 0, 0)
         
         # 基本设置组
         basic_group = QGroupBox("基本设置")
@@ -1368,7 +1379,7 @@ QPushButton:pressed {
         color_layout.setSpacing(8)
         color_layout.setContentsMargins(10, 10, 10, 10)
         
-        # 背景颜色选择
+        # 背景颜色选择（移除 HEX 输入）
         bg_color_layout = QHBoxLayout()
         bg_color_layout.addWidget(QLabel("背景颜色:"))
         self.bg_color_btn = QPushButton()
@@ -1378,15 +1389,9 @@ QPushButton:pressed {
         self.bg_color_btn.clicked.connect(lambda: self.choose_color('bg'))
         self.bg_color_btn.setMaximumWidth(80)
         bg_color_layout.addWidget(self.bg_color_btn)
-        
-        self.bg_color_hex = QLineEdit("#004080")
-        self.bg_color_hex.setMaximumWidth(60)
-        self.bg_color_hex.textChanged.connect(self.on_hex_color_changed)
-        bg_color_layout.addWidget(QLabel("HEX:"))
-        bg_color_layout.addWidget(self.bg_color_hex)
         bg_color_layout.addStretch()
         
-        # 字体颜色选择
+        # 字体颜色选择（移除 HEX 输入）
         font_color_layout = QHBoxLayout()
         font_color_layout.addWidget(QLabel("字体颜色:"))
         self.font_color_btn = QPushButton()
@@ -1396,15 +1401,9 @@ QPushButton:pressed {
         self.font_color_btn.clicked.connect(lambda: self.choose_color('font'))
         self.font_color_btn.setMaximumWidth(80)
         font_color_layout.addWidget(self.font_color_btn)
-        
-        self.font_color_hex = QLineEdit("#FFFFFF")
-        self.font_color_hex.setMaximumWidth(60)
-        self.font_color_hex.textChanged.connect(self.on_hex_color_changed)
-        font_color_layout.addWidget(QLabel("HEX:"))
-        font_color_layout.addWidget(self.font_color_hex)
         font_color_layout.addStretch()
         
-        # 选中项背景颜色
+        # 选中项背景颜色（移除 HEX 输入）
         selected_bg_layout = QHBoxLayout()
         selected_bg_layout.addWidget(QLabel("选中背景:"))
         self.selected_bg_btn = QPushButton()
@@ -1414,15 +1413,9 @@ QPushButton:pressed {
         self.selected_bg_btn.clicked.connect(lambda: self.choose_color('selected_bg'))
         self.selected_bg_btn.setMaximumWidth(80)
         selected_bg_layout.addWidget(self.selected_bg_btn)
-        
-        self.selected_bg_hex = QLineEdit("#FFFFFF")
-        self.selected_bg_hex.setMaximumWidth(60)
-        self.selected_bg_hex.textChanged.connect(self.on_hex_color_changed)
-        selected_bg_layout.addWidget(QLabel("HEX:"))
-        selected_bg_layout.addWidget(self.selected_bg_hex)
         selected_bg_layout.addStretch()
         
-        # 选中项字体颜色
+        # 选中项字体颜色（移除 HEX 输入）
         selected_font_layout = QHBoxLayout()
         selected_font_layout.addWidget(QLabel("选中字体:"))
         self.selected_font_btn = QPushButton()
@@ -1432,12 +1425,6 @@ QPushButton:pressed {
         self.selected_font_btn.clicked.connect(lambda: self.choose_color('selected_font'))
         self.selected_font_btn.setMaximumWidth(80)
         selected_font_layout.addWidget(self.selected_font_btn)
-        
-        self.selected_font_hex = QLineEdit("#000000")
-        self.selected_font_hex.setMaximumWidth(60)
-        self.selected_font_hex.textChanged.connect(self.on_hex_color_changed)
-        selected_font_layout.addWidget(QLabel("HEX:"))
-        selected_font_layout.addWidget(self.selected_font_hex)
         selected_font_layout.addStretch()
         
         color_layout.addLayout(bg_color_layout)
@@ -1445,11 +1432,28 @@ QPushButton:pressed {
         color_layout.addLayout(selected_bg_layout)
         color_layout.addLayout(selected_font_layout)
         
-        # 添加到配置选项卡
-        config_tab_layout.addWidget(basic_group)
-        config_tab_layout.addWidget(display_group)
-        config_tab_layout.addWidget(self.color_group)
-        config_tab_layout.addStretch()
+        # 代码生成设置组
+        codegen_group = QGroupBox("代码生成")
+        codegen_layout = QVBoxLayout(codegen_group)
+        codegen_layout.setSpacing(8)
+        codegen_layout.setContentsMargins(10, 10, 10, 10)
+        self.cb_emit_font = QCheckBox("包含 ASCII 字体数组")
+        self.cb_emit_font.setChecked(True)
+        self.cb_emit_draw = QCheckBox("包含绘制函数骨架")
+        self.cb_emit_draw.setChecked(True)
+        self.cb_emit_font.stateChanged.connect(lambda _: self.save_settings())
+        self.cb_emit_draw.stateChanged.connect(lambda _: self.save_settings())
+        codegen_layout.addWidget(self.cb_emit_font)
+        codegen_layout.addWidget(self.cb_emit_draw)
+
+        # 添加到配置选项卡（滚动容器）
+        config_inner_layout.addWidget(basic_group)
+        config_inner_layout.addWidget(display_group)
+        config_inner_layout.addWidget(self.color_group)
+        config_inner_layout.addWidget(codegen_group)
+        config_inner_layout.addStretch()
+        config_scroll.setWidget(config_inner)
+        config_tab_layout.addWidget(config_scroll)
         
         # 添加配置选项卡
         self.tab_widget.addTab(config_tab, "⚙️ 配置")
@@ -1488,12 +1492,6 @@ QPushButton:pressed {
         """屏幕类型改变时更新配置，保存当前设置"""
         screen_type = self.screen_type_combo.currentText()
         
-        # 保存当前设置（移除颜色模式）
-        self.current_settings = {
-            'font_size': self.font_size_combo.currentText(),
-            'preview_size': self.preview_size_combo.currentText()
-        }
-        
         # 根据屏幕类型显示或隐藏颜色配置
         if hasattr(self, 'color_group'):
             if screen_type == "OLED":
@@ -1513,27 +1511,28 @@ QPushButton:pressed {
         
         # 更新预览
         self.on_screen_config_changed()
+        self.save_settings()
     
     def on_screen_config_changed(self):
         """屏幕配置改变时更新预览"""
         # 确保预览大小控件已传递
         self.preview.preview_size_combo = self.preview_size_combo
         
-        # 获取所有颜色设置 - 从HEX输入框获取实际的颜色值
-        font_color = self.font_color_hex.text().strip() if hasattr(self, 'font_color_hex') else "#FFFFFF"
-        bg_color = self.bg_color_hex.text().strip() if hasattr(self, 'bg_color_hex') else "#004080"
-        selected_bg = self.selected_bg_hex.text().strip() if hasattr(self, 'selected_bg_hex') else "#FFFFFF"
-        selected_font = self.selected_font_hex.text().strip() if hasattr(self, 'selected_font_hex') else "#000000"
+        # 获取颜色设置：优先使用 HEX 输入；若无，则使用预览当前颜色
+        font_color = self.font_color_hex.text().strip() if hasattr(self, 'font_color_hex') else getattr(self.preview, 'fg_color', QColor(255,255,255)).name().upper()
+        bg_color = self.bg_color_hex.text().strip() if hasattr(self, 'bg_color_hex') else getattr(self.preview, 'bg_color', QColor(0,64,128)).name().upper()
+        selected_bg = self.selected_bg_hex.text().strip() if hasattr(self, 'selected_bg_hex') else getattr(self.preview, 'selected_bg_color', QColor(255,255,255)).name().upper()
+        selected_font = self.selected_font_hex.text().strip() if hasattr(self, 'selected_font_hex') else getattr(self.preview, 'selected_fg_color', QColor(0,0,0)).name().upper()
         
-        # 如果HEX值为空，使用默认值
+        # 规范化HEX值
         if not font_color or not font_color.startswith('#'):
-            font_color = "#FFFFFF"
+            font_color = QColor(255,255,255).name().upper()
         if not bg_color or not bg_color.startswith('#'):
-            bg_color = "#004080"
+            bg_color = QColor(0,64,128).name().upper()
         if not selected_bg or not selected_bg.startswith('#'):
-            selected_bg = "#FFFFFF"
+            selected_bg = QColor(255,255,255).name().upper()
         if not selected_font or not selected_font.startswith('#'):
-            selected_font = "#000000"
+            selected_font = QColor(0,0,0).name().upper()
         
         # 传递所有颜色参数
         self.preview.set_screen_type(
@@ -1729,7 +1728,6 @@ QPushButton:pressed {
     def choose_color(self, color_type):
         """打开颜色选择器"""
         from PySide6.QtWidgets import QColorDialog
-        from PySide6.QtCore import Qt
         
         # 设置合理的默认颜色
         defaults = {
@@ -1743,19 +1741,15 @@ QPushButton:pressed {
         if color_type == 'bg':
             current_color = getattr(self.preview, 'bg_color', defaults[color_type])
             btn = self.bg_color_btn
-            hex_input = self.bg_color_hex
         elif color_type == 'font':
             current_color = getattr(self.preview, 'fg_color', defaults[color_type])
             btn = self.font_color_btn
-            hex_input = self.font_color_hex
         elif color_type == 'selected_bg':
             current_color = getattr(self.preview, 'selected_bg_color', defaults[color_type])
             btn = self.selected_bg_btn
-            hex_input = self.selected_bg_hex
         elif color_type == 'selected_font':
             current_color = getattr(self.preview, 'selected_fg_color', defaults[color_type])
             btn = self.selected_font_btn
-            hex_input = self.selected_font_hex
         else:
             return
         
@@ -1780,9 +1774,6 @@ QPushButton:pressed {
                 }}
             """)
 
-            # 更新HEX输入框
-            hex_input.setText(color.name().upper())
-
             # 根据选择的颜色类型更新预览控件
             if color_type == 'bg':
                 self.preview.bg_color = color
@@ -1795,6 +1786,8 @@ QPushButton:pressed {
             
             # 重新渲染预览
             self.preview.render_menu()
+            self.save_settings()
+            self.save_settings()
             
             # 重新渲染预览
             self.preview.render_menu()
@@ -1824,9 +1817,9 @@ QPushButton:pressed {
                 self.selected_bg_btn.setStyleSheet(f"background-color: {color.name()}; color: {'white' if color.lightness() < 128 else 'black'};")
             elif sender == self.selected_font_hex:
                 self.selected_font_btn.setStyleSheet(f"background-color: {color.name()}; color: {'white' if color.lightness() < 128 else 'black'};")
-            
-            # 更新预览
+        
             self.on_screen_config_changed()
+            self.save_settings()
         except:
             pass  # 忽略无效的HEX输入
     
@@ -1840,10 +1833,13 @@ QPushButton:pressed {
             'screen_type': self.screen_type_combo.currentText(),
             'font_size': self.font_size_combo.currentText(),
             'preview_size': self.preview_size_combo.currentText(),
-            'bg_color': self.bg_color_hex.text().strip() if hasattr(self, 'bg_color_hex') else "#004080",
-            'font_color': self.font_color_hex.text().strip() if hasattr(self, 'font_color_hex') else "#FFFFFF",
-            'selected_bg': self.selected_bg_hex.text().strip() if hasattr(self, 'selected_bg_hex') else "#FFFFFF",
-            'selected_font': self.selected_font_hex.text().strip() if hasattr(self, 'selected_font_hex') else "#000000",
+            'bg_color': self.bg_color_hex.text().strip() if hasattr(self, 'bg_color_hex') else getattr(self.preview, 'bg_color', QColor(0,64,128)).name().upper(),
+            'font_color': self.font_color_hex.text().strip() if hasattr(self, 'font_color_hex') else getattr(self.preview, 'fg_color', QColor(255,255,255)).name().upper(),
+            'selected_bg': self.selected_bg_hex.text().strip() if hasattr(self, 'selected_bg_hex') else getattr(self.preview, 'selected_bg_color', QColor(255,255,255)).name().upper(),
+            'selected_font': self.selected_font_hex.text().strip() if hasattr(self, 'selected_font_hex') else getattr(self.preview, 'selected_fg_color', QColor(0,0,0)).name().upper(),
+            'font_family': self.default_font_combo.currentText() if hasattr(self, 'default_font_combo') else 'Segoe UI',
+            'emit_font_array': self.cb_emit_font.isChecked() if hasattr(self, 'cb_emit_font') else True,
+            'emit_draw_skeleton': self.cb_emit_draw.isChecked() if hasattr(self, 'cb_emit_draw') else True,
             'screen_width': self.screen_width_edit.text(),
             'screen_height': self.screen_height_edit.text(),
             'menu_data': self.serialize_menu()  # 保存菜单数据
@@ -1897,6 +1893,10 @@ QPushButton:pressed {
                                 self.screen_type_combo.setCurrentText(self.current_settings['screen_type'])
                                 self.screen_type_combo.blockSignals(False)
                                 print(f"设置屏幕类型: {self.current_settings['screen_type']}")
+                                try:
+                                    self.on_screen_type_changed()
+                                except:
+                                    pass
                             
                             # 颜色模式已移除
                             
@@ -1913,6 +1913,25 @@ QPushButton:pressed {
                                 self.preview_size_combo.setCurrentText(self.current_settings['preview_size'])
                                 self.preview_size_combo.blockSignals(False)
                                 print(f"设置预览大小: {self.current_settings['preview_size']}")
+                            
+                            # 应用字体族
+                            if hasattr(self, 'default_font_combo') and 'font_family' in self.current_settings:
+                                try:
+                                    self.default_font_combo.blockSignals(True)
+                                    self.default_font_combo.setCurrentText(self.current_settings['font_family'])
+                                    self.default_font_combo.blockSignals(False)
+                                    print(f"设置默认字体: {self.current_settings['font_family']}")
+                                except:
+                                    pass
+                            # 应用代码生成选项
+                            if hasattr(self, 'cb_emit_font') and 'emit_font_array' in self.current_settings:
+                                self.cb_emit_font.blockSignals(True)
+                                self.cb_emit_font.setChecked(bool(self.current_settings['emit_font_array']))
+                                self.cb_emit_font.blockSignals(False)
+                            if hasattr(self, 'cb_emit_draw') and 'emit_draw_skeleton' in self.current_settings:
+                                self.cb_emit_draw.blockSignals(True)
+                                self.cb_emit_draw.setChecked(bool(self.current_settings['emit_draw_skeleton']))
+                                self.cb_emit_draw.blockSignals(False)
                             
                             # 应用屏幕尺寸
                             if hasattr(self, 'screen_width_edit') and 'screen_height_edit' and 'screen_width' in self.current_settings and 'screen_height' in self.current_settings:
@@ -1932,77 +1951,42 @@ QPushButton:pressed {
                             
                             # 应用颜色设置（OLED和TFT模式都支持）
                             if hasattr(self, 'screen_type_combo'):
-                                # 应用背景颜色
-                                if 'bg_color' in self.current_settings and hasattr(self, 'bg_color_hex'):
-                                    self.bg_color_hex.blockSignals(True)
-                                    self.bg_color_hex.setText(self.current_settings['bg_color'])
-                                    self.bg_color_hex.blockSignals(False)
-                                    print(f"设置背景颜色: {self.current_settings['bg_color']}")
-                                    
-                                    # 更新背景颜色按钮
-                                    try:
-                                        from PySide6.QtGui import QColor
-                                        color = QColor(self.current_settings['bg_color'])
-                                        if color.isValid():
+                                try:
+                                    from PySide6.QtGui import QColor
+                                    # 背景颜色
+                                    if 'bg_color' in self.current_settings:
+                                        c = QColor(self.current_settings['bg_color'])
+                                        if c.isValid():
+                                            self.preview.bg_color = c
                                             self.bg_color_btn.setStyleSheet(
-                                                f"background-color: {color.name()}; color: {'white' if color.lightness() < 128 else 'black'};"
+                                                f"background-color: {c.name()}; color: {'white' if c.lightness() < 128 else 'black'};"
                                             )
-                                    except:
-                                        pass
-                                
-                                # 应用字体颜色
-                                if 'font_color' in self.current_settings and hasattr(self, 'font_color_hex'):
-                                    self.font_color_hex.blockSignals(True)
-                                    self.font_color_hex.setText(self.current_settings['font_color'])
-                                    self.font_color_hex.blockSignals(False)
-                                    print(f"设置字体颜色: {self.current_settings['font_color']}")
-                                    
-                                    # 更新字体颜色按钮
-                                    try:
-                                        from PySide6.QtGui import QColor
-                                        color = QColor(self.current_settings['font_color'])
-                                        if color.isValid():
+                                    # 字体颜色
+                                    if 'font_color' in self.current_settings:
+                                        c = QColor(self.current_settings['font_color'])
+                                        if c.isValid():
+                                            self.preview.fg_color = c
                                             self.font_color_btn.setStyleSheet(
-                                                f"background-color: {color.name()}; color: {'white' if color.lightness() < 128 else 'black'};"
+                                                f"background-color: {c.name()}; color: {'white' if c.lightness() < 128 else 'black'};"
                                             )
-                                    except:
-                                        pass
-                                
-                                # 应用选中项背景颜色
-                                if 'selected_bg' in self.current_settings and hasattr(self, 'selected_bg_hex'):
-                                    self.selected_bg_hex.blockSignals(True)
-                                    self.selected_bg_hex.setText(self.current_settings['selected_bg'])
-                                    self.selected_bg_hex.blockSignals(False)
-                                    print(f"设置选中背景: {self.current_settings['selected_bg']}")
-                                    
-                                    # 更新选中背景按钮
-                                    try:
-                                        from PySide6.QtGui import QColor
-                                        color = QColor(self.current_settings['selected_bg'])
-                                        if color.isValid():
+                                    # 选中背景
+                                    if 'selected_bg' in self.current_settings:
+                                        c = QColor(self.current_settings['selected_bg'])
+                                        if c.isValid():
+                                            self.preview.selected_bg_color = c
                                             self.selected_bg_btn.setStyleSheet(
-                                                f"background-color: {color.name()}; color: {'white' if color.lightness() < 128 else 'black'};"
+                                                f"background-color: {c.name()}; color: {'white' if c.lightness() < 128 else 'black'};"
                                             )
-                                    except:
-                                        pass
-                                
-                                # 应用选中项字体颜色
-                                if 'selected_font' in self.current_settings and hasattr(self, 'selected_font_hex'):
-                                    self.selected_font_hex.blockSignals(True)
-                                    self.selected_font_hex.setText(self.current_settings['selected_font'])
-                                    self.selected_font_hex.blockSignals(False)
-                                    print(f"设置选中字体: {self.current_settings['selected_font']}")
-                                    
-                                    # 更新选中字体按钮
-                                    try:
-                                        from PySide6.QtGui import QColor
-                                        color = QColor(self.current_settings['selected_font'])
-                                        if color.isValid():
+                                    # 选中字体
+                                    if 'selected_font' in self.current_settings:
+                                        c = QColor(self.current_settings['selected_font'])
+                                        if c.isValid():
+                                            self.preview.selected_fg_color = c
                                             self.selected_font_btn.setStyleSheet(
-                                                f"background-color: {color.name()}; color: {'white' if color.lightness() < 128 else 'black'};"
+                                                f"background-color: {c.name()}; color: {'white' if c.lightness() < 128 else 'black'};"
                                             )
-                                    except:
-                                        pass
+                                except:
+                                    pass
                             
                             # 更新预览
                             if hasattr(self, 'preview'):
@@ -2939,10 +2923,18 @@ QPushButton:pressed {
 
         code = ["// 自动生成菜单代码 - U8G2", "#include <u8g2.h>", ""]
         code.append("// ---------------- 回调函数 ----------------")
+        def _sanitize_ident(s, fallback):
+            import re
+            ident = re.sub(r"[^A-Za-z0-9_]", "_", s)
+            ident = re.sub(r"_+", "_", ident).strip("_")
+            if not ident or ident[0].isdigit():
+                ident = fallback
+            return ident
         def gen_callbacks(node):
             for c in node.children:
                 if c.is_exec:
                     cb = c.callback_name if c.callback_name else f"menu_cb_{c.id}"
+                    cb = _sanitize_ident(cb, f"menu_cb_{c.id}")
                     code.append(f"void {cb}(void) {{")
                     code.append(f"    // TODO: 在此添加 {c.name} 的执行代码")
                     code.append("}\n")
@@ -2962,22 +2954,40 @@ QPushButton:pressed {
             for c in node.children:
                 if c.children:
                     gen_nodes(c)
-            arr_name = f"{node.name.replace(' ','_')}_children"
+            arr_name = f"{_sanitize_ident(node.name, f'node_{node.id}')}_{node.id}_children"
             code.append(f"MenuItem {arr_name}[{len(node.children)}] = {{")
             for c in node.children:
-                child_ptr = f"{c.name.replace(' ','_')}_children" if c.children else "NULL"
-                cb_ptr = c.callback_name if c.is_exec else "NULL"
+                child_ptr = f"{_sanitize_ident(c.name, f'node_{c.id}')}_{c.id}_children" if c.children else "NULL"
+                cb_name = c.callback_name if c.callback_name else (f"menu_cb_{c.id}" if c.is_exec else "")
+                cb_ptr = _sanitize_ident(cb_name, f"menu_cb_{c.id}") if c.is_exec else "NULL"
                 code.append(f'  {{"{c.name}", {1 if c.is_exec else 0}, {len(c.children)}, {child_ptr}, {cb_ptr}}},')
             code.append("};\n")
 
         gen_nodes(self.menu_root)
-        root_arr_name = f"{self.menu_root.name.replace(' ','_')}_children"
+        root_arr_name = f"{_sanitize_ident(self.menu_root.name, f'node_{self.menu_root.id}')}_{self.menu_root.id}_children"
         code.append(f"MenuItem *menu_root = {root_arr_name};")
 
-        try:
-            code.extend(self._emit_ascii_font_array())
-        except Exception as e:
-            pass
+        # 可选：生成 ASCII 字体数组
+        if hasattr(self, 'cb_emit_font') and self.cb_emit_font.isChecked():
+            try:
+                code.extend(self._emit_ascii_font_array())
+            except Exception:
+                pass
+
+        # 可选：生成绘制函数骨架
+        if hasattr(self, 'cb_emit_draw') and self.cb_emit_draw.isChecked():
+            code.append("\n// ---------------- 绘制函数骨架 ----------------")
+            code.append("void draw_menu(u8g2_t *u8g2, MenuItem *root, uint8_t cursor, uint8_t view_start) {")
+            code.append("    // TODO: 根据硬件与字体设置绘制菜单列表")
+            code.append("    // u8g2_ClearBuffer(u8g2);")
+            code.append("    // u8g2_SetFont(u8g2, u8g2_font_6x10_tf);")
+            code.append("    // for (uint8_t i = 0; i < root->child_count; ++i) {")
+            code.append("    //     const char *txt = root->children[i].name;")
+            code.append("    //     // 计算 y 位置并区分选中项")
+            code.append("    //     // u8g2_DrawStr(u8g2, 2, 12 + i*12, txt);")
+            code.append("    // }")
+            code.append("    // u8g2_SendBuffer(u8g2);")
+            code.append("}")
 
         with open(filename,"w",encoding="utf-8") as f:
             f.write("\n".join(code))
