@@ -839,7 +839,8 @@ class MenuDesigner(QWidget):
             'font_family': 'Segoe UI',
             'emit_font_array': True,
             'emit_draw_skeleton': True,
-            'emit_cjk_subset': True
+            'emit_cjk_subset': True,
+            'export_no_u8g2': False
         }
         
         # 加载保存的设置
@@ -1276,7 +1277,7 @@ QPushButton:pressed {
         menu_tab_layout.addLayout(button_layout)
 
         menu_tab_layout.addWidget(QLabel(" "))
-        self.export_btn = QPushButton("导出U8G2 C代码")
+        self.export_btn = QPushButton("导出MUI C代码")
         self.export_btn.setProperty("class", "primary")  # 设置为主要按钮样式
         self.export_btn.clicked.connect(self.export_code)
         self.export_btn.setMinimumHeight(40)  # 增加导出按钮高度
@@ -1444,12 +1445,16 @@ QPushButton:pressed {
         self.cb_emit_draw.setChecked(True)
         self.cb_emit_cjk = QCheckBox("包含中文子集字库（来自菜单使用的汉字）")
         self.cb_emit_cjk.setChecked(True)
+        self.cb_no_u8g2 = QCheckBox("导出不依赖U8G2的代码（含移植接口与示例）")
+        self.cb_no_u8g2.setChecked(False)
         self.cb_emit_font.stateChanged.connect(lambda _: self.save_settings())
         self.cb_emit_draw.stateChanged.connect(lambda _: self.save_settings())
         self.cb_emit_cjk.stateChanged.connect(lambda _: self.save_settings())
+        self.cb_no_u8g2.stateChanged.connect(lambda _: self.save_settings())
         codegen_layout.addWidget(self.cb_emit_font)
         codegen_layout.addWidget(self.cb_emit_draw)
         codegen_layout.addWidget(self.cb_emit_cjk)
+        codegen_layout.addWidget(self.cb_no_u8g2)
 
         # 添加到配置选项卡（滚动容器）
         config_inner_layout.addWidget(basic_group)
@@ -1689,6 +1694,33 @@ QPushButton:pressed {
         lines.append("};")
         return lines
 
+    def _emit_ascii_font_full(self):
+        family = self.default_font_combo.currentText() if hasattr(self, 'default_font_combo') else 'Segoe UI'
+        px = self._parse_font_px()
+        bitmap = []
+        entries = []
+        offset = 0
+        for code in range(32,127):
+            ch = chr(code)
+            w,h,buf = self._render_glyph_bitmap(ch, family, px)
+            entries.append((code, offset, w, h))
+            bitmap.extend(buf)
+            offset += len(buf)
+        lines = []
+        lines.append("")
+        lines.append(f"const uint8_t ascii_bitmap_{px}[] = {{")
+        for i in range(0, len(bitmap), 16):
+            part = ", ".join(f"0x{b:02X}" for b in bitmap[i:i+16])
+            lines.append(f"    {part},")
+        lines.append("};")
+        lines.append("")
+        lines.append("typedef struct { uint16_t code; uint32_t offset; uint8_t w; uint8_t h; } AsciiGlyph;")
+        lines.append(f"const AsciiGlyph ascii_table_{px}[] = {{")
+        for code,off,w,h in entries:
+            lines.append(f"    {{0x{code:02X}, {off}, {w}, {h}}},")
+        lines.append("};")
+        return lines
+
     def _collect_menu_chars(self):
         s = set()
         def walk(n):
@@ -1886,6 +1918,7 @@ QPushButton:pressed {
             'emit_font_array': self.cb_emit_font.isChecked() if hasattr(self, 'cb_emit_font') else True,
             'emit_draw_skeleton': self.cb_emit_draw.isChecked() if hasattr(self, 'cb_emit_draw') else True,
             'emit_cjk_subset': self.cb_emit_cjk.isChecked() if hasattr(self, 'cb_emit_cjk') else True,
+            'export_no_u8g2': self.cb_no_u8g2.isChecked() if hasattr(self, 'cb_no_u8g2') else False,
             'screen_width': self.screen_width_edit.text(),
             'screen_height': self.screen_height_edit.text(),
             'menu_data': self.serialize_menu()  # 保存菜单数据
@@ -1982,6 +2015,10 @@ QPushButton:pressed {
                                 self.cb_emit_cjk.blockSignals(True)
                                 self.cb_emit_cjk.setChecked(bool(self.current_settings['emit_cjk_subset']))
                                 self.cb_emit_cjk.blockSignals(False)
+                            if hasattr(self, 'cb_no_u8g2') and 'export_no_u8g2' in self.current_settings:
+                                self.cb_no_u8g2.blockSignals(True)
+                                self.cb_no_u8g2.setChecked(bool(self.current_settings['export_no_u8g2']))
+                                self.cb_no_u8g2.blockSignals(False)
                             
                             # 应用屏幕尺寸
                             if hasattr(self, 'screen_width_edit') and 'screen_height_edit' and 'screen_width' in self.current_settings and 'screen_height' in self.current_settings:
@@ -3128,73 +3165,214 @@ QPushButton:pressed {
             with open(path, "w", encoding="utf-8") as f:
                 f.write("\n".join(lines))
 
-        bundle_dir = os.path.join(out_dir, "u8g2_code")
-        menu_dir = os.path.join(bundle_dir, "menu")
-        fonts_dir = os.path.join(bundle_dir, "fonts")
-        _write(os.path.join(menu_dir, "menu.h"), menu_h)
-        _write(os.path.join(menu_dir, "menu.c"), menu_c)
-        if ascii_h:
-            _write(os.path.join(fonts_dir, "ascii_font.h"), ascii_h)
-            _write(os.path.join(fonts_dir, "ascii_font.c"), ascii_c)
-        if cjk_h:
-            _write(os.path.join(fonts_dir, "cjk_font.h"), cjk_h)
-            _write(os.path.join(fonts_dir, "cjk_font.c"), cjk_c)
-        callbacks_dir = os.path.join(bundle_dir, "callbacks")
-        _write(os.path.join(callbacks_dir, "callbacks.h"), callbacks_h)
-        _write(os.path.join(callbacks_dir, "callbacks.c"), callbacks_c)
-        # 生成移植接口（按键导航）
-        port_h = []
-        port_h.append("#ifndef PORTING_INTERFACE_H")
-        port_h.append("#define PORTING_INTERFACE_H")
-        port_h.append("#include <stdint.h>")
-        port_h.append("#include \"menu/menu.h\"")
-        port_h.append("typedef enum { MENU_KEY_NONE=0, MENU_KEY_UP, MENU_KEY_DOWN, MENU_KEY_ENTER, MENU_KEY_BACK } MenuKey;")
-        port_h.append("typedef struct { uint8_t cursor; uint8_t view_start; } MenuState;")
-        port_h.append("typedef struct { MenuItem* current; MenuItem* stack[16]; uint8_t depth; MenuState state; } MenuNav;")
-        port_h.append("void menu_nav_init(MenuNav* nav, MenuItem* root);")
-        port_h.append("void menu_nav_on_key(MenuNav* nav, MenuKey key, uint8_t visible_lines);")
-        port_h.append("#endif")
-        _write(os.path.join(bundle_dir, "porting_interface.h"), port_h)
+        mui_dir = os.path.join(out_dir, "MUI")
+        no_u8g2 = hasattr(self, 'cb_no_u8g2') and self.cb_no_u8g2.isChecked()
+        if not no_u8g2:
+            menu_dir = os.path.join(mui_dir, "menu")
+            fonts_dir = os.path.join(mui_dir, "fonts")
+            callbacks_dir = os.path.join(mui_dir, "callbacks")
+            _write(os.path.join(menu_dir, "menu.h"), menu_h)
+            _write(os.path.join(menu_dir, "menu.c"), menu_c)
+            if ascii_h:
+                _write(os.path.join(fonts_dir, "ascii_font.h"), ascii_h)
+                _write(os.path.join(fonts_dir, "ascii_font.c"), ascii_c)
+            if cjk_h:
+                _write(os.path.join(fonts_dir, "cjk_font.h"), cjk_h)
+                _write(os.path.join(fonts_dir, "cjk_font.c"), cjk_c)
+            _write(os.path.join(callbacks_dir, "callbacks.h"), callbacks_h)
+            _write(os.path.join(callbacks_dir, "callbacks.c"), callbacks_c)
+            # 导出移植接口与聚合头
+            port_h = []
+            port_h.append("#ifndef PORTING_INTERFACE_H")
+            port_h.append("#define PORTING_INTERFACE_H")
+            port_h.append("#include <stdint.h>")
+            port_h.append("#include \"menu/menu.h\"")
+            port_h.append("typedef enum { MENU_KEY_NONE=0, MENU_KEY_UP, MENU_KEY_DOWN, MENU_KEY_ENTER, MENU_KEY_BACK } MenuKey;")
+            port_h.append("typedef struct { uint8_t cursor; uint8_t view_start; } MenuState;")
+            port_h.append("typedef struct { MenuItem* current; MenuItem* stack[16]; uint8_t depth; MenuState state; } MenuNav;")
+            port_h.append("void menu_nav_init(MenuNav* nav, MenuItem* root);")
+            port_h.append("void menu_nav_on_key(MenuNav* nav, MenuKey key, uint8_t visible_lines);")
+            port_h.append("#endif")
+            _write(os.path.join(mui_dir, "porting_interface.h"), port_h)
 
-        port_c = []
-        port_c.append("#include \"porting_interface.h\"")
-        port_c.append("")
-        port_c.append("void menu_nav_init(MenuNav* nav, MenuItem* root){")
-        port_c.append("  nav->current = root;")
-        port_c.append("  nav->depth = 0;")
-        port_c.append("  nav->state.cursor = 0;")
-        port_c.append("  nav->state.view_start = 0;")
-        port_c.append("}")
-        port_c.append("")
-        port_c.append("void menu_nav_on_key(MenuNav* nav, MenuKey key, uint8_t visible_lines){")
-        port_c.append("  if(!nav || !nav->current) return;")
-        port_c.append("  uint8_t count = nav->current->child_count;")
-        port_c.append("  switch(key){")
-        port_c.append("    case MENU_KEY_UP: if(nav->state.cursor > 0) nav->state.cursor--; break;")
-        port_c.append("    case MENU_KEY_DOWN: if(nav->state.cursor + 1 < count) nav->state.cursor++; break;")
-        port_c.append("    case MENU_KEY_ENTER: {")
-        port_c.append("      MenuItem* sel = &nav->current->children[nav->state.cursor];")
-        port_c.append("      if(sel->is_exec && sel->callback) sel->callback();")
-        port_c.append("      else if(sel->child_count){ if(nav->depth < 16) nav->stack[nav->depth++] = nav->current; nav->current = sel; nav->state.cursor = 0; nav->state.view_start = 0; }")
-        port_c.append("    } break;")
-        port_c.append("    case MENU_KEY_BACK: if(nav->depth > 0){ nav->current = nav->stack[--nav->depth]; nav->state.cursor = 0; nav->state.view_start = 0; } break;")
-        port_c.append("    default: break;")
-        port_c.append("  }")
-        port_c.append("  if(nav->state.cursor < nav->state.view_start) nav->state.view_start = nav->state.cursor;")
-        port_c.append("  if(visible_lines > 0 && nav->state.cursor >= nav->state.view_start + visible_lines) nav->state.view_start = nav->state.cursor - visible_lines + 1;")
-        port_c.append("}")
-        _write(os.path.join(bundle_dir, "porting_interface.c"), port_c)
-        bundle_h = []
-        bundle_h.append("#ifndef U8G2_CODE_BUNDLE_H")
-        bundle_h.append("#define U8G2_CODE_BUNDLE_H")
-        bundle_h.append("#include \"menu/menu.h\"")
-        bundle_h.append("#include \"porting_interface.h\"")
-        bundle_h.append("#include \"callbacks/callbacks.h\"")
-        if cjk_h:
-            bundle_h.append("#include \"fonts/cjk_font.h\"")
-        bundle_h.append("#endif")
-        _write(os.path.join(bundle_dir, "u8g2_bundle.h"), bundle_h)
-        print(f"C代码已导出到目录: {bundle_dir} (menu/, fonts/, callbacks/, porting_interface.*)")
+            port_c = []
+            port_c.append("#include \"porting_interface.h\"")
+            port_c.append("")
+            port_c.append("void menu_nav_init(MenuNav* nav, MenuItem* root){")
+            port_c.append("  nav->current = root;")
+            port_c.append("  nav->depth = 0;")
+            port_c.append("  nav->state.cursor = 0;")
+            port_c.append("  nav->state.view_start = 0;")
+            port_c.append("}")
+            port_c.append("")
+            port_c.append("void menu_nav_on_key(MenuNav* nav, MenuKey key, uint8_t visible_lines){")
+            port_c.append("  if(!nav || !nav->current) return;")
+            port_c.append("  uint8_t count = nav->current->child_count;")
+            port_c.append("  switch(key){")
+            port_c.append("    case MENU_KEY_UP: if(nav->state.cursor > 0) nav->state.cursor--; break;")
+            port_c.append("    case MENU_KEY_DOWN: if(nav->state.cursor + 1 < count) nav->state.cursor++; break;")
+            port_c.append("    case MENU_KEY_ENTER: {")
+            port_c.append("      MenuItem* sel = &nav->current->children[nav->state.cursor];")
+            port_c.append("      if(sel->is_exec && sel->callback) sel->callback();")
+            port_c.append("      else if(sel->child_count){ if(nav->depth < 16) nav->stack[nav->depth++] = nav->current; nav->current = sel; nav->state.cursor = 0; nav->state.view_start = 0; }")
+            port_c.append("    } break;")
+            port_c.append("    case MENU_KEY_BACK: if(nav->depth > 0){ nav->current = nav->stack[--nav->depth]; nav->state.cursor = 0; nav->state.view_start = 0; } break;")
+            port_c.append("    default: break;")
+            port_c.append("  }")
+            port_c.append("  if(nav->state.cursor < nav->state.view_start) nav->state.view_start = nav->state.cursor;")
+            port_c.append("  if(visible_lines > 0 && nav->state.cursor >= nav->state.view_start + visible_lines) nav->state.view_start = nav->state.cursor - visible_lines + 1;")
+            port_c.append("}")
+            _write(os.path.join(mui_dir, "porting_interface.c"), port_c)
+            bundle_h = []
+            bundle_h.append("#ifndef U8G2_CODE_BUNDLE_H")
+            bundle_h.append("#define U8G2_CODE_BUNDLE_H")
+            bundle_h.append("#include \"menu/menu.h\"")
+            bundle_h.append("#include \"porting_interface.h\"")
+            bundle_h.append("#include \"callbacks/callbacks.h\"")
+            if cjk_h:
+                bundle_h.append("#include \"fonts/cjk_font.h\"")
+            bundle_h.append("#endif")
+            _write(os.path.join(mui_dir, "mui_bundle.h"), bundle_h)
+        else:
+            bare_dir = mui_dir
+            bare_menu_h = []
+            bare_menu_h.append("#ifndef MENU_BARE_H")
+            bare_menu_h.append("#define MENU_BARE_H")
+            bare_menu_h.append("#include <stdint.h>")
+            bare_menu_h.append("typedef struct MenuItem { const char *name; uint8_t is_exec; uint8_t child_count; struct MenuItem *children; void (*callback)(void); } MenuItem;")
+            bare_menu_h.append("extern MenuItem *menu_root;")
+            bare_menu_h.append("void draw_menu_bare(uint8_t cursor, uint8_t view_start);")
+            bare_menu_h.append("#endif")
+            bare_menu_c = []
+            bare_menu_c.append("#include \"menu_bare.h\"")
+            bare_menu_c.append("#include \"gfx_port.h\"")
+            def gen_callbacks_to_bare(lines, node):
+                for c in node.children:
+                    if c.is_exec:
+                        cb = c.callback_name if c.callback_name else f"menu_cb_{c.id}"
+                        cb = _sanitize_ident(cb, f"menu_cb_{c.id}")
+                        lines.append(f"void {cb}(void){{}}")
+                    gen_callbacks_to_bare(lines, c)
+            gen_callbacks_to_bare(bare_menu_c, self.menu_root)
+            bare_menu_c.append("")
+            def gen_nodes_bare(lines, node):
+                for c in node.children:
+                    if c.children:
+                        gen_nodes_bare(lines, c)
+                arr_name = f"{_sanitize_ident(node.name, f'node_{node.id}')}_{node.id}_children"
+                lines.append(f"MenuItem {arr_name}[{len(node.children)}] = {{")
+                for c in node.children:
+                    child_ptr = f"{_sanitize_ident(c.name, f'node_{c.id}')}_{c.id}_children" if c.children else "NULL"
+                    cb_name = c.callback_name if c.callback_name else (f"menu_cb_{c.id}" if c.is_exec else "")
+                    cb_ptr = _sanitize_ident(cb_name, f"menu_cb_{c.id}") if c.is_exec else "NULL"
+                    lines.append(f'  {{"{c.name}", {1 if c.is_exec else 0}, {len(c.children)}, {child_ptr}, {cb_ptr}}},')
+                lines.append("};")
+                lines.append("")
+            gen_nodes_bare(bare_menu_c, self.menu_root)
+            root_arr_name_bare = f"{_sanitize_ident(self.menu_root.name, f'node_{self.menu_root.id}')}_{self.menu_root.id}_children"
+            bare_menu_c.append(f"MenuItem *menu_root = {root_arr_name_bare};")
+            bare_menu_c.append("")
+            bare_menu_c.append("void draw_menu_bare(uint8_t cursor, uint8_t view_start){")
+            bare_menu_c.append("  int base_y=12; int line_h=12;")
+            bare_menu_c.append("  gfx_clear();")
+            bare_menu_c.append("  for(uint8_t i=0;i<menu_root->child_count;i++){ const char* txt=menu_root->children[i].name; int y=base_y + i*line_h; gfx_draw_text_mixed(2,y,txt);")
+            bare_menu_c.append("  }")
+            bare_menu_c.append("  gfx_send();")
+            bare_menu_c.append("}")
+            gfx_h = []
+            gfx_h.append("#ifndef GFX_PORT_H")
+            gfx_h.append("#define GFX_PORT_H")
+            gfx_h.append("#include <stdint.h>")
+            gfx_h.append("void gfx_init(void);")
+            gfx_h.append("void gfx_clear(void);")
+            gfx_h.append("void gfx_send(void);")
+            gfx_h.append("void gfx_draw_pixel(int x,int y);")
+            gfx_h.append("void gfx_fill_rect(int x,int y,int w,int h);")
+            gfx_h.append("void gfx_draw_bitmap_1bpp(int x,int y,int w,int h,const uint8_t* data);")
+            gfx_h.append("void gfx_draw_text_mixed(int x,int y,const char* utf8);")
+            gfx_h.append("#endif")
+            gfx_c = []
+            gfx_c.append("#include \"gfx_port.h\"")
+            if hasattr(self, 'cb_emit_font') and self.cb_emit_font.isChecked():
+                gfx_c.extend(self._emit_ascii_font_full())
+            if hasattr(self, 'cb_emit_cjk') and self.cb_emit_cjk.isChecked():
+                gfx_c.extend(self._emit_cjk_font_subset())
+            gfx_c.append("")
+            gfx_c.append("void gfx_init(void){}");
+            gfx_c.append("void gfx_clear(void){}");
+            gfx_c.append("void gfx_send(void){}");
+            gfx_c.append("void gfx_draw_pixel(int x,int y){}");
+            gfx_c.append("void gfx_fill_rect(int x,int y,int w,int h){ for(int yy=0; yy<h; ++yy){ for(int xx=0; xx<w; ++xx){ gfx_draw_pixel(x+xx,y+yy); } } }");
+            gfx_c.append("void gfx_draw_bitmap_1bpp(int x,int y,int w,int h,const uint8_t* data){ int stride=(w+7)/8; for(int yy=0; yy<h; ++yy){ const uint8_t* row=data+yy*stride; int bit=0; uint8_t b=0; for(int xx=0; xx<w; ++xx){ if(bit==0){ b=*row++; bit=8; } int on=(b&0x80)?1:0; b<<=1; bit--; if(on) gfx_draw_pixel(x+xx,y+yy); } } }");
+            gfx_c.append("static int find_ascii(uint16_t code){ extern const AsciiGlyph ascii_table_" + str(px) + "[]; int n=sizeof(ascii_table_" + str(px) + ")/sizeof(AsciiGlyph); int l=0,r=n-1; while(l<=r){ int m=(l+r)/2; if(ascii_table_" + str(px) + "[m].code==code) return m; if(ascii_table_" + str(px) + "[m].code<code) l=m+1; else r=m-1;} return -1; }")
+            gfx_c.append("void gfx_draw_text_mixed(int x,int y,const char* utf8){")
+            gfx_c.append("  uint32_t i=0; int cx=x; while(utf8[i]){ uint8_t c=(uint8_t)utf8[i]; if(c<128){ int idx=find_ascii(c); if(idx>=0){ extern const uint8_t ascii_bitmap_" + str(px) + "[]; extern const AsciiGlyph ascii_table_" + str(px) + "[]; const AsciiGlyph a=ascii_table_" + str(px) + "[idx]; gfx_draw_bitmap_1bpp(cx, y-a.h+12, a.w, a.h, ascii_bitmap_" + str(px) + "+ a.offset); cx += a.w + 1; } i++; } else {")
+            gfx_c.append("    uint8_t c1=(uint8_t)utf8[i+1]; uint8_t c2=(uint8_t)utf8[i+2]; uint16_t cp=((c & 0x0F)<<12) | ((c1 & 0x3F)<<6) | (c2 & 0x3F); i+=3; ")
+            gfx_c.append("    int idx=cjk_find_idx(cp); if(idx>=0){ extern const uint8_t cjk_bitmap_" + str(px) + "[]; extern const GlyphEntry cjk_table_" + str(px) + "[]; GlyphEntry e=cjk_table_" + str(px) + "[idx]; gfx_draw_bitmap_1bpp(cx, y-e.h+12, e.w, e.h, cjk_bitmap_" + str(px) + "+ e.offset); cx += e.w + 1; } else { cx += 6; } }")
+            gfx_c.append("  }")
+            gfx_c.append("}")
+            example_c = []
+            example_c.append("#include \"menu_bare.h\"")
+            example_c.append("#include \"gfx_port.h\"")
+            example_c.append("#include \"input_port.h\"")
+            example_c.append("#include <stdint.h>")
+            example_c.append("int main(void){ gfx_init(); uint8_t cursor=0, view_start=0; for(;;){ MenuKey k=input_port_read(); (void)k; gfx_clear(); draw_menu_bare(cursor,view_start); gfx_send(); } return 0; }")
+            os.makedirs(os.path.join(bare_dir, "menu"), exist_ok=True)
+            os.makedirs(os.path.join(bare_dir, "port"), exist_ok=True)
+            os.makedirs(os.path.join(bare_dir, "examples"), exist_ok=True)
+            _write(os.path.join(bare_dir, "menu", "menu_bare.h"), bare_menu_h)
+            _write(os.path.join(bare_dir, "menu", "menu_bare.c"), bare_menu_c)
+            _write(os.path.join(bare_dir, "port", "gfx_port.h"), gfx_h)
+            _write(os.path.join(bare_dir, "port", "gfx_port.c"), gfx_c)
+            # 输入接口文件
+            input_h = []
+            input_h.append("#ifndef INPUT_PORT_H")
+            input_h.append("#define INPUT_PORT_H")
+            input_h.append("#include <stdint.h>")
+            input_h.append("typedef enum { MENU_KEY_NONE=0, MENU_KEY_UP, MENU_KEY_DOWN, MENU_KEY_ENTER, MENU_KEY_BACK } MenuKey;")
+            input_h.append("MenuKey input_port_read(void);")
+            input_h.append("#endif")
+            input_c = []
+            input_c.append("#include \"input_port.h\"")
+            input_c.append("MenuKey input_port_read(void){ return MENU_KEY_NONE; }")
+            _write(os.path.join(bare_dir, "port", "input_port.h"), input_h)
+            _write(os.path.join(bare_dir, "port", "input_port.c"), input_c)
+            _write(os.path.join(bare_dir, "examples", "example_bare.c"), example_c)
+            # STM32 StdPeriph implementation templates
+            stm_dir = os.path.join(bare_dir, "port", "stm32_std")
+            os.makedirs(stm_dir, exist_ok=True)
+            stm_gfx = []
+            stm_gfx.append("#include \"stm32f10x.h\"")
+            stm_gfx.append("#include \"stm32f10x_rcc.h\"")
+            stm_gfx.append("#include \"stm32f10x_gpio.h\"")
+            stm_gfx.append("#include \"stm32f10x_i2c.h\"")
+            stm_gfx.append("#include \"gfx_port.h\"")
+            stm_gfx.append("#define SSD1306_ADDR 0x3C")
+            stm_gfx.append("#define GFX_W 128")
+            stm_gfx.append("#define GFX_H 64")
+            stm_gfx.append("static uint8_t fb[GFX_W*GFX_H/8];")
+            stm_gfx.append("static void clock_init(void){ RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB|RCC_APB2Periph_GPIOA, ENABLE); RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1, ENABLE); }")
+            stm_gfx.append("static void gpio_init(void){ GPIO_InitTypeDef gi; gi.GPIO_Pin=GPIO_Pin_6|GPIO_Pin_7; gi.GPIO_Speed=GPIO_Speed_50MHz; gi.GPIO_Mode=GPIO_Mode_AF_OD; GPIO_Init(GPIOB,&gi); gi.GPIO_Pin=GPIO_Pin_0|GPIO_Pin_1|GPIO_Pin_2|GPIO_Pin_3; gi.GPIO_Speed=GPIO_Speed_50MHz; gi.GPIO_Mode=GPIO_Mode_IPU; GPIO_Init(GPIOA,&gi); }")
+            stm_gfx.append("static void i2c1_init(void){ I2C_InitTypeDef ii; I2C_DeInit(I2C1); ii.I2C_ClockSpeed=400000; ii.I2C_Mode=I2C_Mode_I2C; ii.I2C_DutyCycle=I2C_DutyCycle_2; ii.I2C_OwnAddress1=0x00; ii.I2C_Ack=I2C_Ack_Disable; ii.I2C_AcknowledgedAddress=I2C_AcknowledgedAddress_7bit; I2C_Init(I2C1,&ii); I2C_Cmd(I2C1,ENABLE); }")
+            stm_gfx.append("static void i2c1_write(uint8_t control,const uint8_t* data,int len){ while(I2C_GetFlagStatus(I2C1,I2C_FLAG_BUSY)); I2C_GenerateSTART(I2C1,ENABLE); while(!I2C_CheckEvent(I2C1,I2C_EVENT_MASTER_MODE_SELECT)); I2C_Send7bitAddress(I2C1,SSD1306_ADDR<<1,I2C_Direction_Transmitter); while(!I2C_CheckEvent(I2C1,I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED)); I2C_SendData(I2C1,control); while(!I2C_CheckEvent(I2C1,I2C_EVENT_MASTER_BYTE_TRANSMITTED)); for(int i=0;i<len;i++){ I2C_SendData(I2C1,data[i]); while(!I2C_CheckEvent(I2C1,I2C_EVENT_MASTER_BYTE_TRANSMITTED)); } I2C_GenerateSTOP(I2C1,ENABLE); }")
+            stm_gfx.append("static void ssd1306_cmd(uint8_t c){ i2c1_write(0x00,&c,1); }")
+            stm_gfx.append("static void ssd1306_data(const uint8_t* d,int n){ i2c1_write(0x40,d,n); }")
+            stm_gfx.append("void gfx_init(void){ clock_init(); gpio_init(); i2c1_init(); ssd1306_cmd(0xAE); ssd1306_cmd(0x20); ssd1306_cmd(0x00); ssd1306_cmd(0xB0); ssd1306_cmd(0xC8); ssd1306_cmd(0x00); ssd1306_cmd(0x10); ssd1306_cmd(0x40); ssd1306_cmd(0x81); ssd1306_cmd(0x7F); ssd1306_cmd(0xA1); ssd1306_cmd(0xA6); ssd1306_cmd(0xA8); ssd1306_cmd(0x3F); ssd1306_cmd(0xA4); ssd1306_cmd(0xD3); ssd1306_cmd(0x00); ssd1306_cmd(0xD5); ssd1306_cmd(0x80); ssd1306_cmd(0xD9); ssd1306_cmd(0xF1); ssd1306_cmd(0xDA); ssd1306_cmd(0x12); ssd1306_cmd(0xDB); ssd1306_cmd(0x40); ssd1306_cmd(0x8D); ssd1306_cmd(0x14); ssd1306_cmd(0xAF); }")
+            stm_gfx.append("void gfx_clear(void){ for(int i=0;i<sizeof(fb);i++) fb[i]=0x00; }")
+            stm_gfx.append("void gfx_send(void){ for(uint8_t page=0; page<(GFX_H/8); page++){ ssd1306_cmd(0xB0+page); ssd1306_cmd(0x00); ssd1306_cmd(0x10); ssd1306_data(&fb[page*GFX_W], GFX_W); } }")
+            stm_gfx.append("void gfx_draw_pixel(int x,int y){ if(x<0||x>=GFX_W||y<0||y>=GFX_H) return; fb[(y>>3)*GFX_W + x] |= (1<<(y&7)); }")
+            stm_gfx.append("void gfx_fill_rect(int x,int y,int w,int h){ for(int yy=0; yy<h; ++yy){ for(int xx=0; xx<w; ++xx){ gfx_draw_pixel(x+xx,y+yy); } } }")
+            stm_gfx.append("void gfx_draw_bitmap_1bpp(int x,int y,int w,int h,const uint8_t* data){ int stride=(w+7)/8; for(int yy=0; yy<h; ++yy){ const uint8_t* row=data+yy*stride; int bit=0; uint8_t b=0; for(int xx=0; xx<w; ++xx){ if(bit==0){ b=*row++; bit=8; } if(b&0x80) gfx_draw_pixel(x+xx,y+yy); b<<=1; bit--; } } }")
+            _write(os.path.join(stm_dir, "gfx_port_stm32_std.c"), stm_gfx)
+            stm_input = []
+            stm_input.append("#include \"stm32f10x.h\"")
+            stm_input.append("#include \"stm32f10x_rcc.h\"")
+            stm_input.append("#include \"stm32f10x_gpio.h\"")
+            stm_input.append("#include \"input_port.h\"")
+            stm_input.append("static void input_init(void){ RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE); GPIO_InitTypeDef gi; gi.GPIO_Pin=GPIO_Pin_0|GPIO_Pin_1|GPIO_Pin_2|GPIO_Pin_3; gi.GPIO_Speed=GPIO_Speed_50MHz; gi.GPIO_Mode=GPIO_Mode_IPU; GPIO_Init(GPIOA,&gi); }")
+            stm_input.append("MenuKey input_port_read(void){ static int inited=0; if(!inited){ input_init(); inited=1; } if(GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_0)==Bit_RESET) return MENU_KEY_UP; if(GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_1)==Bit_RESET) return MENU_KEY_DOWN; if(GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_2)==Bit_RESET) return MENU_KEY_ENTER; if(GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_3)==Bit_RESET) return MENU_KEY_BACK; return MENU_KEY_NONE; }")
+            _write(os.path.join(stm_dir, "input_port_stm32_std.c"), stm_input)
+        print(f"MUI 代码已导出到目录: {mui_dir}")
 
 # ---------------- Main ----------------
 if __name__=="__main__":

@@ -10,6 +10,7 @@
   "emit_font_array": true,
   "emit_draw_skeleton": true,
   "emit_cjk_subset": true,
+  "export_no_u8g2": true,
   "screen_width": "128",
   "screen_height": "128",
   "menu_data": {
@@ -17,7 +18,7 @@
     "is_exec": false,
     "visible": true,
     "callback_name": "",
-    "cursor_pos": 5,
+    "cursor_pos": 0,
     "children": [
       {
         "name": "系统设置",
