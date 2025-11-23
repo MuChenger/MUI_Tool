@@ -838,7 +838,8 @@ class MenuDesigner(QWidget):
             'selected_font': '#000000',
             'font_family': 'Segoe UI',
             'emit_font_array': True,
-            'emit_draw_skeleton': True
+            'emit_draw_skeleton': True,
+            'emit_cjk_subset': True
         }
         
         # 加载保存的设置
@@ -1441,10 +1442,14 @@ QPushButton:pressed {
         self.cb_emit_font.setChecked(True)
         self.cb_emit_draw = QCheckBox("包含绘制函数骨架")
         self.cb_emit_draw.setChecked(True)
+        self.cb_emit_cjk = QCheckBox("包含中文子集字库（来自菜单使用的汉字）")
+        self.cb_emit_cjk.setChecked(True)
         self.cb_emit_font.stateChanged.connect(lambda _: self.save_settings())
         self.cb_emit_draw.stateChanged.connect(lambda _: self.save_settings())
+        self.cb_emit_cjk.stateChanged.connect(lambda _: self.save_settings())
         codegen_layout.addWidget(self.cb_emit_font)
         codegen_layout.addWidget(self.cb_emit_draw)
+        codegen_layout.addWidget(self.cb_emit_cjk)
 
         # 添加到配置选项卡（滚动容器）
         config_inner_layout.addWidget(basic_group)
@@ -1683,6 +1688,46 @@ QPushButton:pressed {
                 lines.append(f"    {part},")
         lines.append("};")
         return lines
+
+    def _collect_menu_chars(self):
+        s = set()
+        def walk(n):
+            s.update(list(n.name))
+            for c in n.children:
+                walk(c)
+        if self.menu_root:
+            walk(self.menu_root)
+        return s
+
+    def _emit_cjk_font_subset(self):
+        fam = self.default_font_combo.currentText() if hasattr(self, 'default_font_combo') else 'Microsoft YaHei'
+        px = self._parse_font_px()
+        used = sorted(self._collect_menu_chars())
+        cjk = [ch for ch in used if ('\u4e00' <= ch <= '\u9fff') or ('\u3000' <= ch <= '\u303f')]
+        if not cjk:
+            return []
+        bitmap = []
+        entries = []
+        offset = 0
+        for ch in cjk:
+            w,h,buf = self._render_glyph_bitmap(ch, fam, px)
+            entries.append((ord(ch), offset, w, h))
+            bitmap.extend(buf)
+            offset += len(buf)
+        lines = []
+        lines.append("")
+        lines.append(f"const uint8_t cjk_bitmap_{px}[] = {{")
+        for i in range(0, len(bitmap), 16):
+            part = ", ".join(f"0x{b:02X}" for b in bitmap[i:i+16])
+            lines.append(f"    {part},")
+        lines.append("};")
+        lines.append("")
+        lines.append("typedef struct { uint16_t code; uint32_t offset; uint8_t w; uint8_t h; } GlyphEntry;")
+        lines.append(f"const GlyphEntry cjk_table_{px}[] = {{")
+        for code,off,w,h in entries:
+            lines.append(f"    {{0x{code:04X}, {off}, {w}, {h}}},")
+        lines.append("};")
+        return lines
         
     # ---------------- 颜色选择器方法 ----------------
     def filter_menu_tree(self):
@@ -1840,6 +1885,7 @@ QPushButton:pressed {
             'font_family': self.default_font_combo.currentText() if hasattr(self, 'default_font_combo') else 'Segoe UI',
             'emit_font_array': self.cb_emit_font.isChecked() if hasattr(self, 'cb_emit_font') else True,
             'emit_draw_skeleton': self.cb_emit_draw.isChecked() if hasattr(self, 'cb_emit_draw') else True,
+            'emit_cjk_subset': self.cb_emit_cjk.isChecked() if hasattr(self, 'cb_emit_cjk') else True,
             'screen_width': self.screen_width_edit.text(),
             'screen_height': self.screen_height_edit.text(),
             'menu_data': self.serialize_menu()  # 保存菜单数据
@@ -1932,6 +1978,10 @@ QPushButton:pressed {
                                 self.cb_emit_draw.blockSignals(True)
                                 self.cb_emit_draw.setChecked(bool(self.current_settings['emit_draw_skeleton']))
                                 self.cb_emit_draw.blockSignals(False)
+                            if hasattr(self, 'cb_emit_cjk') and 'emit_cjk_subset' in self.current_settings:
+                                self.cb_emit_cjk.blockSignals(True)
+                                self.cb_emit_cjk.setChecked(bool(self.current_settings['emit_cjk_subset']))
+                                self.cb_emit_cjk.blockSignals(False)
                             
                             # 应用屏幕尺寸
                             if hasattr(self, 'screen_width_edit') and 'screen_height_edit' and 'screen_width' in self.current_settings and 'screen_height' in self.current_settings:
@@ -2974,19 +3024,88 @@ QPushButton:pressed {
             except Exception:
                 pass
 
+        # 可选：生成中文子集字库
+        if hasattr(self, 'cb_emit_cjk') and self.cb_emit_cjk.isChecked():
+            try:
+                code.extend(self._emit_cjk_font_subset())
+                code.append("")
+                code.append("static int cjk_find_idx(uint16_t code) {")
+                code.append("  int l = 0; int r = (int)(sizeof(cjk_table_" + str(self._parse_font_px()) + ")/sizeof(GlyphEntry)) - 1;")
+                code.append("  while (l <= r) {")
+                code.append("    int m = (l + r) / 2;")
+                code.append("    if (cjk_table_" + str(self._parse_font_px()) + "[m].code == code) return m;")
+                code.append("    if (cjk_table_" + str(self._parse_font_px()) + "[m].code < code) l = m + 1; else r = m - 1;")
+                code.append("  }")
+                code.append("  return -1;")
+                code.append("}")
+                code.append("")
+                code.append("static void draw_cjk_char(u8g2_t *u8g2, uint16_t code, int x, int y) {")
+                code.append("  int idx = cjk_find_idx(code);")
+                code.append("  if (idx < 0) return;")
+                code.append("  GlyphEntry e = cjk_table_" + str(self._parse_font_px()) + "[idx];")
+                code.append("  const uint8_t *p = cjk_bitmap_" + str(self._parse_font_px()) + ";")
+                code.append("  p += e.offset;")
+                code.append("  uint8_t row_stride = (e.w + 7) / 8;")
+                code.append("  for (uint8_t yy = 0; yy < e.h; ++yy) {")
+                code.append("    const uint8_t *row = p + yy * row_stride;")
+                code.append("    uint8_t bit = 0; uint8_t b = 0;")
+                code.append("    for (uint8_t xx = 0; xx < e.w; ++xx) {")
+                code.append("      if (bit == 0) { b = *row++; bit = 8; }")
+                code.append("      uint8_t on = (b & 0x80) ? 1 : 0; b <<= 1; bit--;")
+                code.append("      if (on) u8g2_DrawPixel(u8g2, x + xx, y + yy);")
+                code.append("    }")
+                code.append("  }")
+                code.append("}")
+                code.append("")
+                code.append("static uint32_t utf8_next(const char *s, uint32_t *i) {")
+                code.append("  uint8_t c = (uint8_t)s[*i];")
+                code.append("  if (c < 0x80) { (*i)++; return c; }")
+                code.append("  if ((c & 0xE0) == 0xC0) { uint32_t cp = (c & 0x1F) << 6; c = (uint8_t)s[++(*i)]; cp |= (c & 0x3F); (*i)++; return cp; }")
+                code.append("  if ((c & 0xF0) == 0xE0) { uint8_t c1 = (uint8_t)s[*i+1]; uint8_t c2 = (uint8_t)s[*i+2]; uint32_t cp = ((uint32_t)(c & 0x0F) << 12) | ((uint32_t)(c1 & 0x3F) << 6) | (uint32_t)(c2 & 0x3F); *i += 3; return cp; }")
+                code.append("  if ((c & 0xF8) == 0xF0) { uint8_t c1 = (uint8_t)s[*i+1]; uint8_t c2 = (uint8_t)s[*i+2]; uint8_t c3 = (uint8_t)s[*i+3]; uint32_t cp = ((uint32_t)(c & 0x07) << 18) | ((uint32_t)(c1 & 0x3F) << 12) | ((uint32_t)(c2 & 0x3F) << 6) | (uint32_t)(c3 & 0x3F); *i += 4; return cp; }")
+                code.append("  (*i)++; return 0x3F;")
+                code.append("}")
+                code.append("")
+                code.append("void draw_text_mixed(u8g2_t *u8g2, const char *utf8, int x, int y) {")
+                code.append("  uint32_t i = 0; int cx = x;")
+                code.append("  while (utf8[i]) {")
+                code.append("    uint32_t cp = utf8_next(utf8, &i);")
+                code.append("    if (cp < 128) {")
+                code.append("      char buf[2]; buf[0] = (char)cp; buf[1] = '\\0';")
+                code.append("      u8g2_DrawStr(u8g2, cx, y, buf);")
+                code.append("      cx += u8g2_GetStrWidth(u8g2, buf);")
+                code.append("    } else {")
+                code.append("      int idx = cjk_find_idx((uint16_t)cp);")
+                code.append("      if (idx >= 0) {")
+                code.append("        GlyphEntry e = cjk_table_" + str(self._parse_font_px()) + "[idx];")
+                code.append("        draw_cjk_char(u8g2, (uint16_t)cp, cx, y - e.h + u8g2_GetMaxCharHeight(u8g2));")
+                code.append("        cx += e.w + 1;")
+                code.append("      } else {")
+                code.append("        u8g2_DrawStr(u8g2, cx, y, " + '"?"' + ");")
+                code.append("        cx += u8g2_GetStrWidth(u8g2, " + '"?"' + ");")
+                code.append("      }")
+                code.append("    }")
+                code.append("  }")
+                code.append("}")
+            except Exception:
+                pass
+
         # 可选：生成绘制函数骨架
         if hasattr(self, 'cb_emit_draw') and self.cb_emit_draw.isChecked():
             code.append("\n// ---------------- 绘制函数骨架 ----------------")
             code.append("void draw_menu(u8g2_t *u8g2, MenuItem *root, uint8_t cursor, uint8_t view_start) {")
-            code.append("    // TODO: 根据硬件与字体设置绘制菜单列表")
-            code.append("    // u8g2_ClearBuffer(u8g2);")
-            code.append("    // u8g2_SetFont(u8g2, u8g2_font_6x10_tf);")
-            code.append("    // for (uint8_t i = 0; i < root->child_count; ++i) {")
-            code.append("    //     const char *txt = root->children[i].name;")
-            code.append("    //     // 计算 y 位置并区分选中项")
-            code.append("    //     // u8g2_DrawStr(u8g2, 2, 12 + i*12, txt);")
-            code.append("    // }")
-            code.append("    // u8g2_SendBuffer(u8g2);")
+            code.append("  u8g2_ClearBuffer(u8g2);")
+            code.append("  u8g2_SetFont(u8g2, u8g2_font_6x10_tf);")
+            code.append("  int base_y = 12; int line_h = 12;")
+            code.append("  for (uint8_t i = 0; i < root->child_count; ++i) {")
+            code.append("    const char *txt = root->children[i].name;")
+            code.append("    int y = base_y + i * line_h;")
+            if hasattr(self, 'cb_emit_cjk') and self.cb_emit_cjk.isChecked():
+                code.append("    draw_text_mixed(u8g2, txt, 2, y);")
+            else:
+                code.append("    u8g2_DrawStr(u8g2, 2, y, txt);")
+            code.append("  }")
+            code.append("  u8g2_SendBuffer(u8g2);")
             code.append("}")
 
         with open(filename,"w",encoding="utf-8") as f:
