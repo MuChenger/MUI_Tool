@@ -3044,13 +3044,17 @@ QPushButton:pressed {
         callbacks_h.append("#ifndef MENU_CALLBACKS_H")
         callbacks_h.append("#define MENU_CALLBACKS_H")
         callbacks_h.append("#include <stdint.h>")
+        callbacks_h.append("#ifndef MUI_CB_PRINT")
+        callbacks_h.append("#include <stdio.h>")
+        callbacks_h.append("#define MUI_CB_PRINT(msg) do { printf(\"%s\\n\", (msg)); } while(0)")
+        callbacks_h.append("#endif")
         def gen_callbacks_to(node):
             for c in node.children:
                 if c.is_exec:
                     cb = c.callback_name if c.callback_name else f"menu_cb_{c.id}"
                     cb = _sanitize_ident(cb, f"menu_cb_{c.id}")
                     callbacks_h.append(f"void {cb}(void);")
-                    callbacks_c.append(f"void {cb}(void){{}}")
+                    callbacks_c.append(f"void {cb}(void){{ MUI_CB_PRINT(\"{cb}\"); }}")
                 gen_callbacks_to(c)
         gen_callbacks_to(self.menu_root)
         callbacks_h.append("#endif")
@@ -3242,6 +3246,10 @@ QPushButton:pressed {
             bare_menu_h.append("typedef struct MenuItem { const char *name; uint8_t is_exec; uint8_t child_count; struct MenuItem *children; void (*callback)(void); } MenuItem;")
             bare_menu_h.append("extern MenuItem *menu_root;")
             bare_menu_h.append("void draw_menu_bare(uint8_t cursor, uint8_t view_start);")
+            bare_menu_h.append("#ifndef MUI_CB_PRINT")
+            bare_menu_h.append("#include <stdio.h>")
+            bare_menu_h.append("#define MUI_CB_PRINT(msg) do { printf(\"%s\\n\", (msg)); } while(0)")
+            bare_menu_h.append("#endif")
             bare_menu_h.append("#endif")
             bare_menu_c = []
             bare_menu_c.append("#include \"menu_bare.h\"")
@@ -3251,7 +3259,7 @@ QPushButton:pressed {
                     if c.is_exec:
                         cb = c.callback_name if c.callback_name else f"menu_cb_{c.id}"
                         cb = _sanitize_ident(cb, f"menu_cb_{c.id}")
-                        lines.append(f"void {cb}(void){{}}")
+                        lines.append(f"void {cb}(void){{ MUI_CB_PRINT(\"{cb}\"); }}")
                     gen_callbacks_to_bare(lines, c)
             gen_callbacks_to_bare(bare_menu_c, self.menu_root)
             bare_menu_c.append("")
